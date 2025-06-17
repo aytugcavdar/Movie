@@ -110,9 +110,13 @@ WatchlistSchema.methods.updateStats = async function() {
   if (this.movies.length > 0) {
     const Movie = mongoose.model('Movie');
     const movieIds = this.movies.map(item => item.movie);
-    const movies = await Movie.find({ _id: { $in: movieIds } }, 'runtime');
-
-    this.totalRuntime = movies.reduce((acc, movie) => acc + movie.runtime, 0);
+    
+    const movies = await Movie.find({ _id: { $in: movieIds } }).select('runtime');
+    this.totalRuntime = movies.reduce((total, movie) => {
+      return total + (movie.runtime || 0);
+    }, 0);
+  } else {
+    this.totalRuntime = 0;
   }
 };
 
