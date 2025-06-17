@@ -45,11 +45,14 @@ const UserSchema = new mongoose.Schema({
     maxlength: [500, 'Biyografi en fazla 500 karakter olabilir']
   },
   avatar: {
-    url: {
-      type: String,
-      default: 'https://via.placeholder.com/150'
-    },
-    publicId: String
+        public_id: {
+            type: String,
+            default: null
+        },
+        url: {
+            type: String,
+            default: null
+        },
   },
   role: {
     type: String,

@@ -6,7 +6,7 @@ const MovieSchema = new mongoose.Schema({
   tmdbId: {
     type: Number,
     required: true,
-    unique: true
+    
   },
   imdbId: {
     type: String,
@@ -158,7 +158,7 @@ const MovieSchema = new mongoose.Schema({
 });
 
 // İndeksler
-MovieSchema.index({ tmdbId: 1 });
+MovieSchema.index({ tmdbId: 1 }, { unique: true });
 MovieSchema.index({ title: 'text', originalTitle: 'text', overview: 'text' });
 MovieSchema.index({ 'genres.name': 1 });
 MovieSchema.index({ releaseDate: -1 });

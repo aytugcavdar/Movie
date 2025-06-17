@@ -1,11 +1,12 @@
 // controllers/movieController.js
 const axios = require('axios');
 const Movie = require('../models/Movie');
-const Person = require('../models/Person');
-const Cast = require('../models/Cast');
-const Crew = require('../models/Crew');
+//const Person = require('../models/Person');
+//const Cast = require('../models/Cast');
+//const Crew = require('../models/Crew');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
+
 
 // TMDB API configuration
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
