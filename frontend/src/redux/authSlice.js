@@ -88,6 +88,9 @@ export const getMe = createAsyncThunk(
     try {
       const response = await fetch(`${API_URL}/me`, {
         method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
       });
       if (!response.ok) {
@@ -193,9 +196,9 @@ export const resetPassword = createAsyncThunk(
 
 export const verifyEmail = createAsyncThunk(
   "auth/verifyEmail",
-  async (token, { rejectWithValue }) => {
+  async (verifytoken, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_URL}/verify-email/${token}`, {
+      const response = await fetch(`${API_URL}/verify-email/${verifytoken}`, {
         method: "GET",
         credentials: "include",
       });
@@ -291,10 +294,11 @@ const authSlice = createSlice({
       })
       .addCase(getMe.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
+        
+        state.user = action.payload.data;
         state.isAuthenticated = true;
         // Admin kontrolü
-        if (action.payload.user.role === "admin") {
+        if (action.payload.data.role === "admin") {
           state.isAdmin = true;
         }
       })

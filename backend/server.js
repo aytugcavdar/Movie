@@ -14,6 +14,10 @@ const helmet = require("helmet");
 require("./models/User");
 require("./models/Movie");
 require("./models/Review");
+require("./models/List");
+require("./models/Cast");
+require("./models/Crew");
+require("./models/Watchlist");
 
 
 

@@ -61,16 +61,10 @@ const Auth = () => {
     if (e.target.name === "avatar") {
       const file = e.target.files[0];
       if (file) {
-        // File size validation (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error("Dosya boyutu 5MB'dan küçük olmalıdır");
-          return;
-        }
-        
         const reader = new FileReader();
         reader.onloadend = () => {
           if (reader.readyState === 2) {
-            setFormData((prev) => ({ ...prev, avatar: reader.result }));
+            setFormData((prev) => ({ ...prev, avatar: reader.result })); // Base64 string
             setPreview(reader.result);
           }
         };
@@ -78,10 +72,6 @@ const Auth = () => {
       }
     } else {
       setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-      // Clear error when user starts typing
-      if (errors[e.target.name]) {
-        setErrors(prev => ({ ...prev, [e.target.name]: '' }));
-      }
     }
   };
 
@@ -102,7 +92,7 @@ const Auth = () => {
           password: formData.password 
         })).unwrap();
         toast.success("Giriş başarılı!");
-        navigate("/dashboard");
+        navigate("/");
       }
     } catch (error) {
       toast.error(error.message || "Bir hata oluştu");

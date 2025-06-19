@@ -4,6 +4,7 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
+const cloudinary = require("cloudinary").v2;
 
 // @desc    Kullanıcı kaydı
 // @route   POST /api/v1/auth/register
@@ -11,13 +12,23 @@ const crypto = require('crypto');
 exports.register = asyncHandler(async (req, res, next) => {
   const { username, email, password, firstName, lastName } = req.body;
 
+  const avatar = await cloudinary.uploader.upload(req.body.avatar, {
+            folder: "avatars",
+            width: 100,
+            crop: "scale",
+        });
+
   // Kullanıcıyı oluştur
   const user = await User.create({
     username,
     email,
     password,
     firstName,
-    lastName
+    lastName,
+    avatar: {
+      public_id: avatar.public_id,
+      url: avatar.secure_url
+    }
   });
 
   // E-posta doğrulama token'ı oluştur
@@ -25,7 +36,7 @@ exports.register = asyncHandler(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   // E-posta doğrulama linkini oluştur
-  const verificationUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/verify-email/${emailVerificationToken}`;
+  const verificationUrl = `${req.protocol}://${process.env.CLIENT_URL}/verify-email/${emailVerificationToken}`;
 
   const message = `
     Merhaba ${user.firstName},
