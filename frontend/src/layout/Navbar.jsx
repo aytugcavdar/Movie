@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../redux/authSlice';
 import { toast } from 'react-toastify';
-import { FiFilm, FiLogIn, FiLogOut, FiUser, FiMenu, FiHome, FiList } from 'react-icons/fi';
+import { FiFilm, FiLogIn, FiLogOut, FiUser, FiMenu, FiHome, FiList, FiSettings } from 'react-icons/fi'; // Import FiSettings
 
 const Navbar = () => {
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, isAdmin } = useSelector((state) => state.auth); // Destructure isAdmin
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -30,11 +30,22 @@ const Navbar = () => {
   // Kullanıcı giriş yapmışsa gösterilecek menü
   const loggedInMenu = (
     <div className="flex items-center gap-2">
+      {/* Admin Link - Render only if user is admin */}
+      {isAdmin && (
+        <Link 
+          to="/admin/dashboard" 
+          className="btn btn-ghost btn-circle hidden lg:flex tooltip tooltip-bottom"
+          data-tip="Admin Paneli"
+        >
+          <FiSettings size={20} />
+        </Link>
+      )}
+
       {/* Masaüstü kullanıcı menüsü */}
       <div className="dropdown dropdown-end">
-        <div 
-          tabIndex={0} 
-          role="button" 
+        <div
+          tabIndex={0}
+          role="button"
           className="btn btn-ghost btn-circle avatar hover:scale-105 transition-transform duration-200"
         >
           <div className="w-10 rounded-full ring-2 ring-primary ring-offset-2 ring-offset-base-100">
@@ -45,8 +56,8 @@ const Navbar = () => {
             />
           </div>
         </div>
-        <ul 
-          tabIndex={0} 
+        <ul
+          tabIndex={0}
           className="dropdown-content menu bg-base-200 rounded-box z-[1] w-60 p-2 shadow-lg border border-base-300 mt-3"
         >
           <li className="border-b border-base-300 pb-2 mb-2">
@@ -71,8 +82,16 @@ const Navbar = () => {
               <span>Profil</span>
             </Link>
           </li>
+          {isAdmin && ( // Admin link for dropdown too
+            <li>
+              <Link to="/admin/dashboard" className="flex items-center gap-3 p-2 hover:bg-primary hover:text-primary-content rounded-lg transition-colors">
+                <FiSettings size={16} />
+                <span>Admin Paneli</span>
+              </Link>
+            </li>
+          )}
           <li>
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center gap-3 p-2 hover:bg-error hover:text-error-content rounded-lg transition-colors text-left w-full"
             >
@@ -88,8 +107,8 @@ const Navbar = () => {
   // Kullanıcı giriş yapmamışsa gösterilecek menü
   const guestMenu = (
     <div className="flex-none">
-      <Link 
-        to="/auth" 
+      <Link
+        to="/auth"
         className="btn btn-primary btn-outline hover:btn-primary hover:scale-105 transition-all duration-200"
       >
         <FiLogIn size={16} />
@@ -108,14 +127,14 @@ const Navbar = () => {
           <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
             <FiMenu size={20} />
           </div>
-          <ul 
-            tabIndex={0} 
+          <ul
+            tabIndex={0}
             className="menu menu-sm dropdown-content bg-base-200 rounded-box z-[1] mt-3 w-52 p-2 shadow-lg border border-base-300"
           >
             {navigationLinks.map((link) => (
               <li key={link.to}>
-                <Link 
-                  to={link.to} 
+                <Link
+                  to={link.to}
                   className="flex items-center gap-3 p-2 hover:bg-primary hover:text-primary-content rounded-lg transition-colors"
                 >
                   <link.icon size={16} />
@@ -123,12 +142,20 @@ const Navbar = () => {
                 </Link>
               </li>
             ))}
+            {isAdmin && ( // Admin link for mobile menu
+              <li>
+                <Link to="/admin/dashboard" className="flex items-center gap-3 p-2 hover:bg-primary hover:text-primary-content rounded-lg transition-colors">
+                  <FiSettings size={16} />
+                  <span>Admin Paneli</span>
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
 
         {/* Logo */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="btn btn-ghost text-xl lg:text-2xl text-primary font-bold hover:scale-105 transition-transform duration-200"
         >
           <FiFilm size={24} />
@@ -143,7 +170,7 @@ const Navbar = () => {
         <ul className="menu menu-horizontal px-1 text-base font-medium">
           {navigationLinks.map((link) => (
             <li key={link.to}>
-              <Link 
+              <Link
                 to={link.to}
                 className="hover:bg-primary hover:text-primary-content rounded-lg transition-colors duration-200 flex items-center gap-2"
               >

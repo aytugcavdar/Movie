@@ -13,6 +13,9 @@ import { useEffect } from 'react'
 import { getMe } from './redux/authSlice'
 import { useDispatch } from 'react-redux'
 import { FiFilm } from 'react-icons/fi'
+import AdminDashboard from './pages/AdminDashboard' // Import new component
+import MovieManagement from './pages/admin/MovieManagement' // Import new component
+import AddMovie from './pages/admin/AddMovie' // Import new component
 
 
 function App() {
@@ -22,7 +25,7 @@ function App() {
     document.title = 'FilmBox - Film ve Dizi İzleme Platformu';
     document.documentElement.lang = 'tr'; // Sayfa dilini Türkçe olarak ayarla
     document.documentElement.dir = 'ltr'; // Sayfa yönünü soldan sağa olarak
-  }, []);
+  }, [dispatch]);
 
   return (
     <>
@@ -44,7 +47,12 @@ function App() {
         <Route path='/' element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path='/verify-email/:verifytoken' element={<VerifyEmail />} />
-        
+        {/* Admin Routes */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} /> {/* New Admin Dashboard */}
+        <Route path="/admin/movies" element={<MovieManagement />} /> {/* New Movie Management */}
+        <Route path="/admin/movies/add" element={<AddMovie />} /> {/* New Add Movie */}
+        {/* Potentially add an edit route later: <Route path="/admin/movies/edit/:id" element={<EditMovie />} /> */}
+
       </Routes>
     </>
   )
