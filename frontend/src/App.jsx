@@ -13,19 +13,32 @@ import { useEffect } from 'react'
 import { getMe } from './redux/authSlice'
 import { useDispatch } from 'react-redux'
 import { FiFilm } from 'react-icons/fi'
-import AdminDashboard from './pages/AdminDashboard' // Import new component
-import MovieManagement from './pages/admin/MovieManagement' // Import new component
-import AddMovie from './pages/admin/AddMovie' // Import new component
+import AdminDashboard from './pages/AdminDashboard'
+import MovieManagement from './pages/admin/MovieManagement' 
+import AddMovie from './pages/admin/AddMovie' 
+import { useSelector } from 'react-redux'
+import Profile from './pages/Profile'
 
 
 function App() {
  const dispatch = useDispatch();
+  const { loading: authLoading } = useSelector((state) => state.auth); // Kimlik doğrulama yükleme durumunu alın // cite: 47
+
   useEffect(() => {
     dispatch(getMe());
     document.title = 'FilmBox - Film ve Dizi İzleme Platformu';
     document.documentElement.lang = 'tr'; // Sayfa dilini Türkçe olarak ayarla
     document.documentElement.dir = 'ltr'; // Sayfa yönünü soldan sağa olarak
   }, [dispatch]);
+
+
+    if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -47,6 +60,7 @@ function App() {
         <Route path='/' element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path='/verify-email/:verifytoken' element={<VerifyEmail />} />
+        <Route path="/profile" element={<Profile />} />
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} /> {/* New Admin Dashboard */}
         <Route path="/admin/movies" element={<MovieManagement />} /> {/* New Movie Management */}

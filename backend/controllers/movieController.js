@@ -1,22 +1,39 @@
 // controllers/movieController.js
 const axios = require('axios');
 const Movie = require('../models/Movie');
-const Person = require('../models/Person'); // Yorum satırı, eğer kullanılıyorsa aktif edin
-const Cast = require('../models/Cast'); // Yorum satırı, eğer kullanılıyorsa aktif edin
-const Crew = require('../models/Crew'); // Yorum satırı, eğer kullanılıyorsa aktif edin
+const Person = require('../models/Person');
+const Cast = require('../models/Cast');
+const Crew = require('../models/Crew');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
 
-
-// TMDB API configuration
+// TMDB API yapılandırması
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
+
+/**
+ 
+ * @param {number} personId 
+ * @returns {Promise<Object|null>} 
+ */
+const getFullPersonDetails = async (personId) => {
+  try {
+    const response = await axios.get(`${TMDB_BASE_URL}/person/${personId}`, {
+      params: { api_key: TMDB_API_KEY, language: 'tr-TR' }
+    });
+    return response.data;
+  } catch (error) {
+    // Tek bir kişi çekme hatası tüm işlemi durdurmasın.
+    console.error(`TMDB'den ${personId} ID'li kişi detayları çekilemedi:`, error.message);
+    return null;
+  }
+};
+
 
 // @desc    Tüm filmleri getir (pagination ve filtreleme ile)
 // @route   GET /api/v1/movies
 // @access  Public
 exports.getMovies = asyncHandler(async (req, res, next) => {
-  // advancedResults middleware kullanılacak
   res.status(200).json(res.advancedResults);
 });
 
@@ -33,13 +50,29 @@ exports.getMovie = asyncHandler(async (req, res, next) => {
         select: 'username firstName lastName avatar'
       },
       options: { limit: 10, sort: { createdAt: -1 } }
+    })
+    .populate({
+        path: 'cast',
+        populate: {
+            path: 'person',
+            select: 'name profilePath tmdbId'
+        },
+        options: { sort: { order: 1 } } // Oyuncuları sıralamasına göre getir
+    })
+    .populate({
+        path: 'crew',
+        match: { department: 'Directing', job: 'Director' }, // Sadece yönetmenleri çek
+        populate: {
+            path: 'person',
+            select: 'name profilePath tmdbId'
+        }
     });
 
   if (!movie) {
     return next(new ErrorResponse('Film bulunamadı', 404));
   }
 
-  // Görüntülenme sayısını artır (anonim kullanıcılar için de)
+  // Görüntülenme sayısını artır
   movie.platformStats.viewCount = (movie.platformStats.viewCount || 0) + 1;
   await movie.save({ validateBeforeSave: false });
 
@@ -55,7 +88,6 @@ exports.getMovie = asyncHandler(async (req, res, next) => {
 exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
   const { tmdbId } = req.params;
 
-  // Önce film veritabanında var mı kontrol et
   let movie = await Movie.findOne({ tmdbId });
 
   if (movie) {
@@ -67,18 +99,16 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    // TMDB'den film detaylarını çek
     const movieResponse = await axios.get(`${TMDB_BASE_URL}/movie/${tmdbId}`, {
       params: {
         api_key: TMDB_API_KEY,
         language: 'tr-TR',
-        append_to_response: 'credits,videos,images' // credits datasını çekiyoruz
+        append_to_response: 'credits,videos,images'
       }
     });
 
     const tmdbMovie = movieResponse.data;
 
-    // Film verisini veritabanına kaydet
     movie = await Movie.create({
       tmdbId: tmdbMovie.id,
       imdbId: tmdbMovie.imdb_id,
@@ -105,32 +135,44 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       platformStats: {
         viewCount: 0,
         likeCount: 0,
-        dislikeCount: 0
+        watchlistCount: 0,
+        reviewCount: 0
       }
     });
 
-    // Process Cast
+    // Oyuncu kadrosunu işle (Cast)
     if (tmdbMovie.credits && tmdbMovie.credits.cast) {
       for (const castMember of tmdbMovie.credits.cast) {
-        // Find or create Person
-        let person = await Person.findOneAndUpdate(
+        // Her oyuncu için detaylı bilgiyi çek
+        const personDetails = await getFullPersonDetails(castMember.id);
+        
+        const personData = {
+          tmdbId: castMember.id,
+          name: castMember.name,
+          profilePath: castMember.profile_path,
+          popularity: castMember.popularity,
+          gender: castMember.gender,
+          knownForDepartment: castMember.known_for_department || 'Acting',
+          ...(personDetails && { // Eğer detaylar geldiyse ekle
+            imdbId: personDetails.imdb_id,
+            biography: personDetails.biography,
+            birthday: personDetails.birthday ? new Date(personDetails.birthday) : null,
+            deathday: personDetails.deathday ? new Date(personDetails.deathday) : null,
+            placeOfBirth: personDetails.place_of_birth,
+            adult: personDetails.adult,
+            alsoKnownAs: personDetails.also_known_as
+          }),
+          lastTmdbUpdate: new Date()
+        };
+
+        const person = await Person.findOneAndUpdate(
           { tmdbId: castMember.id },
-          {
-            name: castMember.name,
-            profilePath: castMember.profile_path,
-            popularity: castMember.popularity,
-            gender: castMember.gender,
-            knownForDepartment: castMember.known_for_department || 'Acting', // Varsayılan olarak 'Acting'
-            // Diğer person detaylarını buraya ekleyebilirsiniz (örn: biography, birthday)
-            // Bunun için ayrı bir TMDB Person detail API çağrısı gerekebilir.
-            // Şimdilik sadece temel bilgileri kaydediyoruz.
-          },
+          personData,
           { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
-        // Create Cast entry
         await Cast.findOneAndUpdate(
-          { movie: movie._id, person: person._id },
+          { movie: movie._id, person: person._id, creditId: castMember.credit_id },
           {
             movie: movie._id,
             person: person._id,
@@ -144,25 +186,38 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       }
     }
 
-    // Process Crew
+    // Teknik ekibi işle (Crew)
     if (tmdbMovie.credits && tmdbMovie.credits.crew) {
       for (const crewMember of tmdbMovie.credits.crew) {
-        // Find or create Person
-        let person = await Person.findOneAndUpdate(
-          { tmdbId: crewMember.id },
-          {
+        const personDetails = await getFullPersonDetails(crewMember.id);
+
+        const personData = {
+            tmdbId: crewMember.id,
             name: crewMember.name,
             profilePath: crewMember.profile_path,
             popularity: crewMember.popularity,
             gender: crewMember.gender,
-            knownForDepartment: crewMember.known_for_department || 'Crew', // Varsayılan olarak 'Crew'
-          },
+            knownForDepartment: crewMember.known_for_department || 'Crew',
+            ...(personDetails && {
+              imdbId: personDetails.imdb_id,
+              biography: personDetails.biography,
+              birthday: personDetails.birthday ? new Date(personDetails.birthday) : null,
+              deathday: personDetails.deathday ? new Date(personDetails.deathday) : null,
+              placeOfBirth: personDetails.place_of_birth,
+              adult: personDetails.adult,
+              alsoKnownAs: personDetails.also_known_as
+            }),
+            lastTmdbUpdate: new Date()
+        };
+
+        const person = await Person.findOneAndUpdate(
+          { tmdbId: crewMember.id },
+          personData,
           { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
-        // Create Crew entry
         await Crew.findOneAndUpdate(
-          { movie: movie._id, person: person._id, job: crewMember.job }, // movie, person ve job birleşimi unique olmalı
+          { movie: movie._id, person: person._id, creditId: crewMember.credit_id },
           {
             movie: movie._id,
             person: person._id,
@@ -175,7 +230,6 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       }
     }
 
-
     res.status(201).json({
       success: true,
       data: movie,
@@ -184,8 +238,9 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
 
   } catch (error) {
     console.error('TMDB API veya veritabanı kaydetme hatası:', error.message, error.stack);
-    // Hata durumunda, eğer film kaydedilmiş ancak cast/crew kaydı başarısız olduysa, filmi de temizlemek isteyebiliriz.
-    // Ancak bu, idempotency için daha karmaşık bir mantık gerektirebilir. Şimdilik sadece hata döndürüyoruz.
+    if (movie && movie._id) {
+        await Movie.findByIdAndDelete(movie._id); // Eğer film oluşturulduysa ama işlem yarım kaldıysa, filmi sil.
+    }
     return next(new ErrorResponse(`Film eklenirken bir hata oluştu: ${error.message}`, 500));
   }
 });
@@ -194,68 +249,15 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/movies/:id
 // @access  Private (Admin)
 exports.updateMovie = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-  const {
-    title,
-    originalTitle,
-    overview,
-    tagline,
-    releaseDate,
-    runtime,
-    posterPath,
-    backdropPath,
-    genres,
-    originalLanguage,
-    spokenLanguages,
-    productionCompanies,
-    productionCountries,
-    budget,
-    revenue,
-    status,
-    adult,
-    extraInfo
-  } = req.body;
-
-  let movie = await Movie.findById(id);
-
-  if (!movie) {
-    return next(new ErrorResponse(`ID'si ${id} olan film bulunamadı`, 404));
-  }
-
-  // Güncellenecek alanları belirle
-  const fieldsToUpdate = {
-    title,
-    originalTitle,
-    overview,
-    tagline,
-    releaseDate: releaseDate ? new Date(releaseDate) : undefined, 
-    runtime,
-    posterPath,
-    backdropPath,
-    genres,
-    originalLanguage,
-    spokenLanguages,
-    productionCompanies,
-    productionCountries,
-    budget,
-    revenue,
-    status,
-    adult,
-    extraInfo
-  };
-
-  
-  Object.keys(fieldsToUpdate).forEach(key => {
-    if (fieldsToUpdate[key] === undefined || fieldsToUpdate[key] === '') {
-      delete fieldsToUpdate[key];
-    }
-  });
-
-  movie = await Movie.findByIdAndUpdate(id, fieldsToUpdate, {
-    new: true, 
+  let movie = await Movie.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
     runValidators: true
   });
 
+  if (!movie) {
+    return next(new ErrorResponse(`ID'si ${req.params.id} olan film bulunamadı`, 404));
+  }
+  
   res.status(200).json({
     success: true,
     data: movie,
@@ -267,20 +269,22 @@ exports.updateMovie = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/v1/movies/:id
 // @access  Private (Admin)
 exports.deleteMovie = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-
-  const movie = await Movie.findById(id);
+  const movie = await Movie.findById(req.params.id);
 
   if (!movie) {
-    return next(new ErrorResponse(`ID'si ${id} olan film bulunamadı`, 404));
+    return next(new ErrorResponse(`ID'si ${req.params.id} olan film bulunamadı`, 404));
   }
+  
+  // İlişkili Cast ve Crew kayıtlarını sil
+  await Cast.deleteMany({ movie: movie._id });
+  await Crew.deleteMany({ movie: movie._id });
+  // İlişkili Review, List vs. kayıtları da silmek isteyebilirsiniz.
 
-
-  await movie.deleteOne(); 
+  await movie.deleteOne();
 
   res.status(200).json({
     success: true,
     data: {},
-    message: 'Film başarıyla silindi'
+    message: 'Film ve ilişkili tüm kayıtlar başarıyla silindi'
   });
 });

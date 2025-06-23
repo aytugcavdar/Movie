@@ -99,5 +99,11 @@ PersonSchema.virtual('genderText').get(function() {
   };
   return genderMap[this.gender] || 'Belirtilmemiş';
 });
+PersonSchema.virtual('filmography', {
+  ref: 'Cast',
+  localField: '_id',
+  foreignField: 'person',
+  justOne: false
+});
 
 module.exports = mongoose.model('Person', PersonSchema);
