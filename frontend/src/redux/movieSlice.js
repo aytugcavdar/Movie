@@ -48,6 +48,64 @@ export const fetchMovieFromTMDB = createAsyncThunk(
         }
     }
 );
+export const fetchMovieById = createAsyncThunk(
+    'movies/fetchMovieById',
+    async (movieId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${movieId}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message);
+            }
+            const data = await response.json();
+            return data.data; // API'den gelen { success: true, data: movie } yapısına göre
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+export const deleteMovie = createAsyncThunk(
+    'movies/deleteMovie',
+    async (movieId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${movieId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || 'Film silinemedi');
+            }
+            // Silme işlemi başarılı olduğunda silinen filmin ID'sini döndür
+            return movieId;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+export const updateMovie = createAsyncThunk(
+    'movies/updateMovie',
+    async ({ movieId, movieData }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${movieId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(movieData),
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || 'Film güncellenemedi');
+            }
+            const data = await response.json();
+            return data.data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
 
 
 const movieSlice = createSlice({
@@ -85,6 +143,51 @@ const movieSlice = createSlice({
             .addCase(fetchMovieFromTMDB.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload || action.error.message;
+            })
+            .addCase(fetchMovieById.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+                state.selectedMovie = null; // Reset selected movie before fetching
+            })
+            .addCase(fetchMovieById.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                state.selectedMovie = action.payload; // Store the fetched movie
+                state.error = null;
+            })
+            .addCase(fetchMovieById.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || action.error.message;
+            })
+            .addCase(deleteMovie.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(deleteMovie.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Silinen filmi state'deki movies dizisinden çıkar
+                state.movies = state.movies.filter(movie => movie._id !== action.payload);
+            })
+            .addCase(deleteMovie.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
+            })
+            .addCase(updateMovie.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(updateMovie.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Güncellenen filmi state'deki movies dizisinde bul ve değiştir
+                const index = state.movies.findIndex(movie => movie._id === action.payload._id);
+                if (index !== -1) {
+                    state.movies[index] = action.payload;
+                }
+                // Eğer `selectedMovie` güncellenen film ise onu da güncelle
+                if (state.selectedMovie && state.selectedMovie._id === action.payload._id) {
+                    state.selectedMovie = action.payload;
+                }
+            })
+            .addCase(updateMovie.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
             });
     },
 });

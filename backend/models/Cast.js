@@ -27,7 +27,12 @@ const CastSchema = new mongoose.Schema({
   },
   creditId: {
     type: String
-  }
+  },
+  person: {
+  type: mongoose.Schema.ObjectId,
+  ref: 'Person', // Person modeliyle olan bağlantı
+  required: true
+},
 }, {
   timestamps: true
 });

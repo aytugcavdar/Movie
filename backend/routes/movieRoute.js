@@ -3,8 +3,10 @@ const {
     getMovies,
     getMovie,
     fetchMovieFromTMDB,
+    updateMovie,
+    deleteMovie  
 } = require('../controllers/movieController');
-
+const reviewRouter = require('./reviewRoute');
 const Movie = require('../models/Movie');
 const advancedResults = require('../middlewares/advancedResults');
 const { protect, authorize } = require('../middlewares/authMiddeleware');
@@ -26,5 +28,12 @@ router.get('/:id', getMovie);
 
 // Protected & Admin only routes
 router.post('/tmdb/:tmdbId', protect, authorize('admin'), fetchMovieFromTMDB);
+router.route('/:id')
+    .put(protect, authorize('admin'), updateMovie)
+    .delete(protect, authorize('admin'), deleteMovie);
+
+router.use('/:movieId/reviews', reviewRouter);
+
+
 
 module.exports = router;

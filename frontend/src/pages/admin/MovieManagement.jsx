@@ -1,8 +1,10 @@
+// frontend/src/pages/admin/MovieManagement.jsx
+
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { fetchMovies } from '../../redux/movieSlice';
-import { FiEdit, FiTrash2, FiPlusCircle, FiSearch, FiFilter } from 'react-icons/fi';
+import { fetchMovies, deleteMovie } from '../../redux/movieSlice';
+import { FiEdit, FiTrash2, FiPlusCircle, FiSearch, FiAlertTriangle } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
 const MovieManagement = () => {
@@ -13,7 +15,8 @@ const MovieManagement = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [moviesPerPage] = useState(10); // Number of movies to display per page
+  const [moviesPerPage] = useState(10);
+  const [movieToDelete, setMovieToDelete] = useState(null); // Silinecek filmi tutmak için state
 
   useEffect(() => {
     if (!authLoading) {
@@ -24,10 +27,30 @@ const MovieManagement = () => {
         toast.error('Bu sayfaya erişim yetkiniz yok.');
         navigate('/');
       } else {
-        dispatch(fetchMovies()); // Fetch movies when component mounts
+        dispatch(fetchMovies());
       }
     }
   }, [dispatch, isAuthenticated, isAdmin, navigate, authLoading]);
+
+  const handleDeleteClick = (movie) => {
+    setMovieToDelete(movie);
+    document.getElementById('delete_modal').showModal();
+  };
+
+  const confirmDelete = () => {
+    if (movieToDelete) {
+      dispatch(deleteMovie(movieToDelete._id))
+        .unwrap()
+        .then(() => {
+          toast.success(`"${movieToDelete.title}" filmi başarıyla silindi.`);
+        })
+        .catch((err) => {
+          toast.error(`Film silinemedi: ${err}`);
+        });
+      setMovieToDelete(null);
+    }
+  };
+
 
   // Pagination logic
   const indexOfLastMovie = currentPage * moviesPerPage;
@@ -153,10 +176,10 @@ const MovieManagement = () => {
                         </div>
                       </td>
                       <td className="flex items-center space-x-2">
-                        <button onClick={() => navigate(`/admin/movies/edit/${movie._id}`)} className="btn btn-info btn-sm btn-square">
+                        <button onClick={() => navigate(`/admin/movies/edit/${movie._id}`)} className="btn btn-info btn-sm btn-square tooltip" data-tip="Düzenle">
                           <FiEdit />
                         </button>
-                        <button onClick={() => console.log('Delete:', movie._id)} className="btn btn-error btn-sm btn-square">
+                        <button onClick={() => handleDeleteClick(movie)} className="btn btn-error btn-sm btn-square tooltip" data-tip="Sil">
                           <FiTrash2 />
                         </button>
                       </td>
@@ -174,6 +197,22 @@ const MovieManagement = () => {
 
         {renderPaginationButtons()}
       </div>
+      
+      {/* Onay Modalı */}
+      <dialog id="delete_modal" className="modal">
+        <div className="modal-box">
+          <h3 className="font-bold text-lg flex items-center gap-2"><FiAlertTriangle className="text-error" /> Filmi Sil</h3>
+          <p className="py-4">
+            "<strong>{movieToDelete?.title}</strong>" filmini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+          </p>
+          <div className="modal-action">
+            <form method="dialog">
+              <button className="btn">İptal</button>
+              <button className="btn btn-error ml-2" onClick={confirmDelete}>Evet, Sil</button>
+            </form>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 };

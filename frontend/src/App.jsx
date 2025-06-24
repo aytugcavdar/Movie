@@ -12,12 +12,13 @@ import Navbar from './layout/Navbar'
 import { useEffect } from 'react'
 import { getMe } from './redux/authSlice'
 import { useDispatch } from 'react-redux'
-import { FiFilm } from 'react-icons/fi'
 import AdminDashboard from './pages/AdminDashboard'
 import MovieManagement from './pages/admin/MovieManagement' 
 import AddMovie from './pages/admin/AddMovie' 
 import { useSelector } from 'react-redux'
 import Profile from './pages/Profile'
+import MovieDetail from './pages/MovieDetail'
+import EditMovie from './pages/admin/EditMovie'
 
 
 function App() {
@@ -61,10 +62,12 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path='/verify-email/:verifytoken' element={<VerifyEmail />} />
         <Route path="/profile" element={<Profile />} />
+         <Route path="/movies/:id" element={<MovieDetail />} /> 
         {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} /> {/* New Admin Dashboard */}
-        <Route path="/admin/movies" element={<MovieManagement />} /> {/* New Movie Management */}
-        <Route path="/admin/movies/add" element={<AddMovie />} /> {/* New Add Movie */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/movies" element={<MovieManagement />} /> 
+        <Route path="/admin/movies/add" element={<AddMovie />} />
+         <Route path="/admin/movies/edit/:id" element={<EditMovie />} />
         {/* Potentially add an edit route later: <Route path="/admin/movies/edit/:id" element={<EditMovie />} /> */}
 
       </Routes>

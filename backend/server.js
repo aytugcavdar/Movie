@@ -25,6 +25,7 @@ const authRoutes = require("./routes/authRoute");
 const movieRoutes = require("./routes/movieRoute");
 
 
+
 dotenv.config();
 cloudinary.config({ 
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -48,6 +49,7 @@ app.use(fileUpload({
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/movies', movieRoutes);
+
 
 
 // Error handler middleware
