@@ -4,7 +4,8 @@ const initialState = {
     movies: [],
     status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null,
-    selectedMovie: null, // To store a single movie, e.g., after fetching from TMDB or for editing
+    selectedMovie: null,
+
 };
 
 const API_URL = 'http://localhost:4000/api/v1/movies';
@@ -58,7 +59,7 @@ export const fetchMovieById = createAsyncThunk(
                 return rejectWithValue(errorData.message);
             }
             const data = await response.json();
-            return data.data; // API'den gelen { success: true, data: movie } yapısına göre
+            return data.data;
         } catch (error) {
             return rejectWithValue(error.message);
         }
@@ -106,6 +107,33 @@ export const updateMovie = createAsyncThunk(
         }
     }
 );
+export const addReview = createAsyncThunk(
+    'movies/addReview',
+    async ({ movieId, reviewData }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${movieId}/reviews`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include', // Auth token cookie'sini göndermek için önemli
+                body: JSON.stringify(reviewData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Backend'den gelen hata mesajını kullan
+                return rejectWithValue(data.message || 'Yorum eklenemedi.');
+            }
+            
+            return data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
 
 
 const movieSlice = createSlice({
@@ -186,6 +214,21 @@ const movieSlice = createSlice({
                 }
             })
             .addCase(updateMovie.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
+            })
+            .addCase(addReview.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(addReview.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                if (state.selectedMovie && state.selectedMovie.reviews) {
+                    
+                    state.selectedMovie.reviews.unshift(action.payload.data);
+                }
+                state.error = null;
+            })
+            .addCase(addReview.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
             });
