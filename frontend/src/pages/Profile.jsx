@@ -9,9 +9,6 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user, isLoading, isError, message } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    dispatch(getMe());
-  }, [dispatch]);
   return (
     <div>Profile</div>
   )

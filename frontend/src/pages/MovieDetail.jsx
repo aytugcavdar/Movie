@@ -13,6 +13,7 @@ const MovieDetail = () => {
   const { selectedMovie, status, error } = useSelector((state) => state.movie);
 
   useEffect(() => {
+    
     if (id) {
       dispatch(fetchMovieById(id));
     }
