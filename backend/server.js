@@ -18,11 +18,16 @@ require("./models/List");
 require("./models/Cast");
 require("./models/Crew");
 require("./models/Watchlist");
+require("./models/Person");
 
 
 
 const authRoutes = require("./routes/authRoute");
 const movieRoutes = require("./routes/movieRoute");
+const personRoutes = require("./routes/personRoute");
+const reviewRoutes = require("./routes/reviewRoute");
+const watchlistRoutes = require("./routes/watchlistRoute");
+
 
 
 
@@ -39,8 +44,8 @@ app.use(helmet());
 
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(cookieParser());
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
+app.use(bodyParser.json({ limit: "100mb" }));
+app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 app.use(express.json());
 app.use(fileUpload({
     useTempFiles: true,
@@ -49,7 +54,9 @@ app.use(fileUpload({
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/movies', movieRoutes);
-
+app.use('/api/v1/persons', personRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/watchlists', watchlistRoutes);
 
 
 // Error handler middleware

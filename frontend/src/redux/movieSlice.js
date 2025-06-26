@@ -5,6 +5,7 @@ const initialState = {
     status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null,
     selectedMovie: null,
+    
 
 };
 
@@ -133,6 +134,23 @@ export const addReview = createAsyncThunk(
         }
     }
 );
+export const likeReview = createAsyncThunk(
+    'movies/likeReview',
+    async (reviewId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/reviews/${reviewId}/like`, {
+                method: 'PUT',
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message);
+            toast.success("İnceleme beğenildi!");
+            return { reviewId, ...data.data };
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
 
 
 
@@ -229,6 +247,26 @@ const movieSlice = createSlice({
                 state.error = null;
             })
             .addCase(addReview.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
+            })
+            .addCase(likeReview.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(likeReview.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                if (state.selectedMovie && state.selectedMovie.reviews) {
+                    const index = state.selectedMovie.reviews.findIndex(review => review._id === action.payload.reviewId);
+                    if (index !== -1) {
+                        state.selectedMovie.reviews[index] = {
+                            ...state.selectedMovie.reviews[index],
+                            ...action.payload
+                        };
+                    }
+                }
+                state.error = null;
+            })
+            .addCase(likeReview.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
             });

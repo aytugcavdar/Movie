@@ -24,7 +24,8 @@ const Navbar = () => {
   const navigationLinks = [
     { to: '/', label: 'Ana Sayfa', icon: FiHome },
     { to: '/movies', label: 'Filmler', icon: FiFilm },
-    { to: '/lists', label: 'Listeler', icon: FiList }
+    { to: '/lists', label: 'Listeler', icon: FiList },
+    { to: '/watchlists', label: 'Listelerim', icon: FiList } 
   ];
 
   // Kullanıcı giriş yapmışsa gösterilecek menü

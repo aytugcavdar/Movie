@@ -97,3 +97,47 @@ exports.deleteReview = asyncHandler(async (req, res, next) => {
         data: {}
     });
 });
+
+exports.likeReview = asyncHandler(async (req, res, next) => {
+    const review = await Review.findById(req.params.id);
+
+    if (!review) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan inceleme bulunamadı`, 404));
+    }
+
+    
+    const isLiked = await review.addLike(req.user.id);
+
+    res.status(200).json({
+        success: true,
+        data: {
+            likesCount: review.likesCount,
+            isLiked: isLiked
+        }
+    });
+});
+
+
+// @desc    Bir incelemeye yorum ekle
+// @route   POST /api/v1/reviews/:id/comments
+// @access  Private
+exports.addCommentToReview = asyncHandler(async (req, res, next) => {
+    const review = await Review.findById(req.params.id);
+
+    if (!review) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan inceleme bulunamadı`, 404));
+    }
+
+    const { content } = req.body;
+    if (!content) {
+        return next(new ErrorResponse(`Yorum içeriği boş olamaz`, 400));
+    }
+
+    
+    const newComment = await review.addComment(req.user.id, content);
+
+    res.status(201).json({
+        success: true,
+        data: newComment
+    });
+});

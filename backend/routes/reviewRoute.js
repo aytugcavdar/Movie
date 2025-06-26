@@ -5,7 +5,9 @@ const {
     getReviewsForMovie,
     addReview,
     updateReview,
-    deleteReview
+    deleteReview,
+    likeReview,
+    addCommentToReview
 } = require('../controllers/reviewController');
 
 const { protect, authorize } = require('../middlewares/authMiddeleware');
@@ -20,5 +22,8 @@ router.route('/')
 router.route('/:id')
     .put(protect, updateReview)
     .delete(protect, deleteReview);
+
+router.route('/:id/like').put(protect, likeReview);
+router.route('/:id/comments').post(protect, addCommentToReview);
 
 module.exports = router;
