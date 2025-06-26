@@ -122,7 +122,7 @@ const MovieCard = ({ movie, className = "" }) => {
             }}
           >
             <FiPlay className="text-xs" />
-            İzle
+            Detayları Görüntüle
           </button>
         </div>
       </div>

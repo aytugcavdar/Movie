@@ -1,4 +1,5 @@
 // backend/controllers/watchlistController.js
+
 const Watchlist = require('../models/Watchlist');
 const Movie = require('../models/Movie');
 const User = require('../models/User');
@@ -11,7 +12,8 @@ const asyncHandler = require('../utils/asyncHandler');
 exports.getMyWatchlists = asyncHandler(async (req, res, next) => {
     const watchlists = await Watchlist.find({ user: req.user.id }).populate({
         path: 'movies.movie',
-        select: 'title fullPosterUrl year'
+        
+        select: 'title posterPath voteAverage releaseDate runtime voteCount genres overview'
     });
 
     res.status(200).json({

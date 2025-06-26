@@ -13,12 +13,18 @@ const API_URL = 'http://localhost:4000/api/v1/movies';
 
 export const fetchMovies = createAsyncThunk(
     'movies/fetchMovies',
-    async () => {
-        const response = await fetch(API_URL);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
+    async (params = {}, { rejectWithValue }) => {
+        try {
+            const query = new URLSearchParams(params).toString();
+            const response = await fetch(`${API_URL}?${query}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || 'Filmler yüklenemedi.');
+            }
+            return await response.json();
+        } catch (error) {
+            return rejectWithValue(error.message);
         }
-        return response.json();
     }
 );
 
