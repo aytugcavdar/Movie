@@ -70,9 +70,9 @@ const AdminDashboard = () => {
               <h2 className="card-title text-white text-3xl font-bold">Kullanıcılar</h2>
               <p className="text-white text-opacity-80 text-center mb-6">Kullanıcıları yönetin ve rollerini atayın.</p>
               <div className="card-actions justify-end">
-                <button disabled className="btn btn-info btn-outline text-lg opacity-50 cursor-not-allowed">
-                  <FiLock /> Çok Yakında
-                </button>
+                <button onClick={() => navigate('/admin/users')} className="btn btn-info btn-outline text-lg group-hover:btn-info transition-all duration-300">
+      <FiUsers /> Kullanıcıları Yönet
+    </button>
               </div>
             </div>
           </div>

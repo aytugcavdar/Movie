@@ -27,6 +27,9 @@ const movieRoutes = require("./routes/movieRoute");
 const personRoutes = require("./routes/personRoute");
 const reviewRoutes = require("./routes/reviewRoute");
 const watchlistRoutes = require("./routes/watchlistRoute");
+const userRoutes = require("./routes/userRoute");
+const listRoutes = require("./routes/listRoute");
+const adminRoutes = require("./routes/adminRoute");
 
 
 
@@ -57,6 +60,9 @@ app.use('/api/v1/movies', movieRoutes);
 app.use('/api/v1/persons', personRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/watchlists', watchlistRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/lists', listRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 
 // Error handler middleware

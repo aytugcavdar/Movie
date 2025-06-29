@@ -8,6 +8,8 @@ import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
 import AddToWatchlistButton from '../components/AddToWatchlistButton';
 import { Link } from "react-router-dom";
+import SocialShareButtons from "../components/SocialShareButtons";
+
 
 
 const MovieDetail = () => {
@@ -43,6 +45,8 @@ const MovieDetail = () => {
     cast,
     crew,
   } = selectedMovie;
+
+    const shareUrl = window.location.href;
 
   return (
     <div className="min-h-screen bg-base-200 p-4 md:p-8">
@@ -81,8 +85,10 @@ const MovieDetail = () => {
               <div className="stat-value">{runtime} dk</div>
             </div>
           </div>
-          <div className="card-actions justify-start mt-4">
+          {/* İzleme Listesine Ekleme ve Sosyal Paylaşım Butonları */}
+          <div className="flex flex-wrap gap-4 items-center justify-start mt-6">
             <AddToWatchlistButton movieId={id} />
+            <SocialShareButtons shareUrl={shareUrl} title={title} />
           </div>
           
          {/* Yönetmen(ler) */}

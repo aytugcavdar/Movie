@@ -1,4 +1,4 @@
-// backend/routes/watchlistRoute.js
+
 const express = require('express');
 const {
     getMyWatchlists,

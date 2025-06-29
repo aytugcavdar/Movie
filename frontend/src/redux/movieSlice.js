@@ -15,12 +15,14 @@ export const fetchMovies = createAsyncThunk(
     'movies/fetchMovies',
     async (params = {}, { rejectWithValue }) => {
         try {
+            
             const query = new URLSearchParams(params).toString();
             const response = await fetch(`${API_URL}?${query}`);
             if (!response.ok) {
                 const errorData = await response.json();
                 return rejectWithValue(errorData.message || 'Filmler yüklenemedi.');
             }
+            
             return await response.json();
         } catch (error) {
             return rejectWithValue(error.message);
@@ -171,8 +173,10 @@ const movieSlice = createSlice({
             })
             .addCase(fetchMovies.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.movies = action.payload.data; // Assuming your backend returns { success: true, count: X, data: [...] }
-                state.error = null; // Clear any previous errors
+                state.movies = action.payload.data;
+                state.pagination = action.payload.pagination;
+                state.total = action.payload.total;
+                state.error = null;
             })
             .addCase(fetchMovies.rejected, (state, action) => {
                 state.status = 'failed';

@@ -1,4 +1,4 @@
-// backend/routes/personRoute.js
+
 const express = require('express');
 const { getPerson } = require('../controllers/personController');
 
