@@ -19,6 +19,7 @@ require("./models/Cast");
 require("./models/Crew");
 require("./models/Watchlist");
 require("./models/Person");
+require("./models/Notification");
 
 
 
@@ -30,6 +31,9 @@ const watchlistRoutes = require("./routes/watchlistRoute");
 const userRoutes = require("./routes/userRoute");
 const listRoutes = require("./routes/listRoute");
 const adminRoutes = require("./routes/adminRoute");
+const notificationRoutes = require("./routes/notificationRoute");
+const statisticsRoutes = require("./routes/statisticsRoute");
+
 
 
 
@@ -63,6 +67,8 @@ app.use('/api/v1/watchlists', watchlistRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/lists', listRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/statistics', statisticsRoutes);
 
 
 // Error handler middleware

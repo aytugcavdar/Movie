@@ -52,7 +52,6 @@ export const createList = createAsyncThunk('lists/createList', async (listData, 
     }
 });
 
-// YENİ THUNK: removeMovieFromList
 export const removeMovieFromList = createAsyncThunk('lists/removeMovieFromList', async ({ listId, movieId }, { rejectWithValue }) => {
     try {
         const response = await fetch(`${API_URL}/${listId}/movies/${movieId}`, {
@@ -62,7 +61,21 @@ export const removeMovieFromList = createAsyncThunk('lists/removeMovieFromList',
         const data = await response.json();
         if (!response.ok) return rejectWithValue(data.message);
         toast.success("Film listeden kaldırıldı!");
-        return { listId, movieId }; // Başarı durumunda ID'leri döndür
+        return { listId, movieId }; 
+    } catch (error) {
+        return rejectWithValue(error.message);
+    }
+});
+export const likeList = createAsyncThunk('lists/likeList', async (listId, { rejectWithValue }) => {
+    try {
+        const response = await fetch(`${API_URL}/${listId}/like`, {
+            method: 'PUT',
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok) return rejectWithValue(data.message);
+        toast.success(data.message);
+        return { listId, likesCount: data.data.likesCount };
     } catch (error) {
         return rejectWithValue(error.message);
     }
@@ -118,6 +131,15 @@ const listSlice = createSlice({
                     state.selectedList.movies = state.selectedList.movies.filter(
                         (movieItem) => movieItem.movie._id.toString() !== action.payload.movieId.toString()
                     );
+                }
+            })
+            .addCase(likeList.fulfilled, (state, action) => {
+                if (state.selectedList && state.selectedList._id === action.payload.listId) {
+                    state.selectedList.likesCount = action.payload.likesCount;
+                }
+                const index = state.lists.findIndex(list => list._id === action.payload.listId);
+                if (index !== -1) {
+                    state.lists[index].likesCount = action.payload.likesCount;
                 }
             });
     }

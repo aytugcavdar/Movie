@@ -1,24 +1,56 @@
-// frontend/src/pages/UserProfile.jsx
-import React, { useEffect } from 'react';
+
+import React, { useEffect,useState  } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchUserProfile } from '../redux/userSlice'; // Yeni slice'tan import ediyoruz
-import { FiUser, FiFilm, FiList, FiStar } from 'react-icons/fi';
+import { fetchUserProfile,followUser  } from '../redux/userSlice'; 
+import { FiUser, FiFilm, FiList, FiStar, FiUserPlus, FiUserCheck } from 'react-icons/fi';
+import { toast } from 'react-toastify';
+import { fetchStatistics } from '../redux/statisticsSlice'; 
+import { FiBarChart2 } from 'react-icons/fi';
 
 const UserProfile = () => {
     const { username } = useParams();
     const dispatch = useDispatch();
     
-    // Veri ve durumu yeni userSlice'tan seçiyoruz
+    
     const { profiles, status, error } = useSelector(state => state.user);
-    const profileData = profiles[username]; // İlgili profili önbellekten alıyoruz
+    const { data: statsData, status: statsStatus } = useSelector(state => state.statistics);
+     const { user: currentUser } = useSelector(state => state.auth);
+    const profileData = profiles[username]; 
+
+    const [isFollowing, setIsFollowing] = useState(false);
+    
 
     useEffect(() => {
-        // Sadece profil verisi daha önce çekilmemişse istek atıyoruz
+      
         if (!profileData) {
             dispatch(fetchUserProfile(username));
+        }if (profileData?.user?._id && !statsData) {
+            dispatch(fetchStatistics(profileData.user._id));
         }
-    }, [dispatch, username, profileData]);
+    }, [dispatch, username, profileData, statsData]);
+
+    useEffect(() => {
+        if (currentUser && profileData?.user?.followers) {
+            setIsFollowing(profileData.user.followers.includes(currentUser.id));
+        }
+    }, [currentUser, profileData]);
+
+     const handleFollow = () => {
+        if (!currentUser) {
+            toast.error("Takip etmek için giriş yapmalısınız.");
+            return;
+        }
+        dispatch(followUser(profileData.user._id))
+            .unwrap()
+            .then(response => {
+                setIsFollowing(response.data.isFollowing);
+               
+                dispatch(fetchUserProfile(username));
+                toast.success(response.message);
+            })
+            .catch(err => toast.error(err));
+    };
 
     if (status === 'loading' && !profileData) {
         return <div className="text-center p-10"><span className="loading loading-spinner loading-lg text-primary"></span></div>;
@@ -52,12 +84,43 @@ const UserProfile = () => {
                             <div><span className="font-bold">{user.followersCount || 0}</span> Takipçi</div>
                             <div><span className="font-bold">{user.followingCount || 0}</span> Takip</div>
                         </div>
+                         <div className="mt-4">
+                                <button onClick={handleFollow} className={`btn ${isFollowing ? 'btn-outline' : 'btn-primary'}`}>
+                                    {isFollowing ? <FiUserCheck /> : <FiUserPlus />}
+                                    {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
+                                </button>
+                            </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Sol Sütun: Yorumlar */}
+
+                    
                     <div className="lg:col-span-2 space-y-6">
+                         <div className="card bg-base-100 shadow-lg">
+                            <div className="card-body">
+                                <h3 className="card-title text-xl flex items-center gap-2"><FiBarChart2 /> İstatistikler</h3>
+                                {statsStatus === 'loading' && <span className="loading loading-dots loading-md"></span>}
+                                {statsData && (
+                                    <div className="stats stats-vertical md:stats-horizontal shadow w-full">
+                                        <div className="stat">
+                                            <div className="stat-title">Toplam Yorum</div>
+                                            <div className="stat-value text-primary">{statsData.stats.totalReviews}</div>
+                                        </div>
+                                        <div className="stat">
+                                            <div className="stat-title">Ortalama Puan</div>
+                                            <div className="stat-value text-secondary">{statsData.stats.averageRating?.toFixed(1) || 'N/A'}</div>
+                                        </div>
+                                        <div className="stat">
+                                            <div className="stat-title">Favori Tür</div>
+                                            <div className="stat-value text-accent">{statsData.genres[0]?._id || 'N/A'}</div>
+                                            <div className="stat-desc">{statsData.genres[0]?.count || 0} film</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                         <h3 className="text-2xl font-bold flex items-center gap-2"><FiFilm /> Son Yorumlar</h3>
                         {reviews && reviews.length > 0 ? (
                             reviews.map(review => (

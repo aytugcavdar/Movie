@@ -4,7 +4,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchListById, removeMovieFromList } from '../redux/listSlice';
 import MovieCard from '../components/MovieCard';
-import { FiArrowLeft, FiTrash2 } from 'react-icons/fi';
+import { FiArrowLeft, FiTrash2,FiHeart } from 'react-icons/fi';
+import { likeList } from '../redux/listSlice';
+import { toast } from 'react-toastify';
 
 const ListDetail = () => {
     const { id } = useParams();
@@ -12,7 +14,16 @@ const ListDetail = () => {
     const navigate = useNavigate();
 
     const { selectedList, status, error } = useSelector(state => state.list);
-    const { user: currentUser } = useSelector(state => state.auth);
+    const { user: currentUser,isAuthenticated } = useSelector(state => state.auth);
+
+
+    const handleLikeList = () => {
+        if (!isAuthenticated) {
+            toast.error("Beğenmek için giriş yapmalısınız.");
+            return;
+        }
+        dispatch(likeList(id));
+    };
 
     useEffect(() => {
         dispatch(fetchListById(id));
@@ -41,11 +52,24 @@ const ListDetail = () => {
                 <button onClick={() => navigate('/lists')} className="btn btn-ghost mb-4">
                     <FiArrowLeft /> Listelerime Dön
                 </button>
+                
+                
 
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold">{selectedList.title}</h1>
-                    <p className="text-lg text-base-content/70 mt-2">{selectedList.description}</p>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-4xl font-bold">{selectedList.title}</h1>
+                            <p className="text-lg text-base-content/70 mt-2">{selectedList.description}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <button onClick={handleLikeList} className="btn btn-ghost">
+                                 <FiHeart className="text-red-500" /> 
+                                 {selectedList.likesCount || 0}
+                             </button>
+                        </div>
+                    </div>
                 </div>
+                
 
                 {selectedList.movies.length === 0 ? (
                     <div className="text-center py-16 bg-base-100 rounded-lg shadow-inner">

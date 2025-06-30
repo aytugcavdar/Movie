@@ -1,9 +1,10 @@
-// backend/controllers/userController.js
+
 const User = require('../models/User');
 const Review = require('../models/Review');
 const Watchlist = require('../models/Watchlist');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const Notification = require('../models/Notification');
 
 // @desc    Bir kullanıcının herkese açık profilini getir
 // @route   GET /api/v1/users/:username
@@ -59,17 +60,23 @@ exports.followUser = asyncHandler(async (req, res, next) => {
     const isFollowing = currentUser.following.some(id => id.toString() === userToFollow.id.toString());
 
     if (isFollowing) {
-        // Takipten çık
+       
         currentUser.following.pull(userToFollow.id);
         userToFollow.followers.pull(currentUser.id);
 
     } else {
-        // Takip et
+       
         currentUser.following.push(userToFollow.id);
         userToFollow.followers.push(currentUser.id);
     }
+    await Notification.create({
+            user: userToFollow._id,
+            sender: currentUser._id,
+            type: 'new_follower',
+            message: `${currentUser.username} sizi takip etmeye başladı.`,
+            link: `/users/${currentUser.username}`
+        });
     
-    // Sayım alanlarını güncelle
     currentUser.followingCount = currentUser.following.length;
     userToFollow.followersCount = userToFollow.followers.length;
 

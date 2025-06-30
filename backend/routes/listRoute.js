@@ -6,7 +6,8 @@ const {
     createList,
     addMovieToList,
     removeMovieFromList,
-    deleteList
+    deleteList,
+    likeList
 } = require('../controllers/listController');
 
 const { protect } = require('../middlewares/authMiddeleware');
@@ -29,5 +30,8 @@ router.route('/:id/movies')
 
 router.route('/:id/movies/:movieId')
     .delete(protect, removeMovieFromList);
+
+router.route('/:id/like')
+    .put(protect, likeList);
 
 module.exports = router;

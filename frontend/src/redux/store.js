@@ -7,6 +7,8 @@ import watchlistReducer from './watchlistSlice';
 import userReducer from './userSlice';
 import listReducer from './listSlice';
 import adminReducer from './adminSlice';
+import notificationReducer from './notificationSlice';
+import statisticsReducer from './statisticsSlice';
 
 
 
@@ -19,6 +21,8 @@ export const store = configureStore({
     user: userReducer,
     list: listReducer,
     admin: adminReducer,
+    notifications: notificationReducer,
+    statistics: statisticsReducer,
 
   },
   

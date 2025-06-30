@@ -100,3 +100,59 @@ exports.deleteList = asyncHandler(async (req, res, next) => {
 
     res.status(200).json({ success: true, data: {} });
 });
+// @desc    Bir listeyi beğen/beğenmekten vazgeç
+// @route   PUT /api/v1/lists/:id/like
+// @access  Private
+exports.likeList = asyncHandler(async (req, res, next) => {
+    const list = await List.findById(req.params.id);
+
+    if (!list) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan liste bulunamadı`, 404));
+    }
+
+    // Modelde tanımladığımız toggleLike metodunu kullanıyoruz
+    const isLiked = await list.toggleLike(req.user.id);
+    
+    const message = isLiked ? 'Liste beğenildi.' : 'Liste beğenmekten vazgeçildi.';
+
+    res.status(200).json({
+        success: true,
+        data: {
+            likesCount: list.likesCount
+        },
+        message
+    });
+});
+// @desc    Bir listeyi beğen/beğenmekten vazgeç
+// @route   PUT /api/v1/lists/:id/like
+// @access  Private
+exports.likeList = asyncHandler(async (req, res, next) => {
+    const list = await List.findById(req.params.id);
+
+    if (!list) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan liste bulunamadı`, 404));
+    }
+
+    // Modelde tanımladığımız toggleLike metodunu kullanıyoruz
+    const isLiked = await list.toggleLike(req.user.id);
+    
+    const message = isLiked ? 'Liste beğenildi.' : 'Liste beğenmekten vazgeçildi.';
+
+    if (isLiked && list.user.toString() !== req.user.id.toString()) {
+        await Notification.create({
+            user: list.user,
+            sender: req.user.id,
+            type: 'list_like',
+            message: `${req.user.username}, "${list.title}" adlı listenizi beğendi.`,
+            link: `/lists/${list._id}`
+        });
+    }
+
+    res.status(200).json({
+        success: true,
+        data: {
+            likesCount: list.likesCount
+        },
+        message
+    });
+});

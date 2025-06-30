@@ -3,12 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../redux/authSlice';
 import { toast } from 'react-toastify';
-import { FiFilm, FiLogIn, FiLogOut, FiUser, FiMenu, FiHome, FiList, FiSettings } from 'react-icons/fi'; // Import FiSettings
+import { FiFilm, FiLogIn, FiLogOut, FiUser, FiMenu, FiHome, FiList, FiSettings, FiBell } from 'react-icons/fi'; // Import FiSettings
+import { fetchNotifications, markAllNotificationsAsRead } from '../redux/notificationSlice';
+import { useEffect } from 'react';
+
 
 const Navbar = () => {
-  const { isAuthenticated, user, isAdmin } = useSelector((state) => state.auth); // Destructure isAdmin
+  const { isAuthenticated, user, isAdmin } = useSelector((state) => state.auth); 
+  const { items: notifications, unreadCount } = useSelector((state) => state.notifications);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+      if (isAuthenticated) {
+          dispatch(fetchNotifications());
+      }
+  }, [isAuthenticated, dispatch]);
 
   const handleLogout = async () => {
     try {
@@ -20,6 +30,51 @@ const Navbar = () => {
     }
   };
 
+  const handleMarkAllRead = () => {
+      if(unreadCount > 0) {
+        dispatch(markAllNotificationsAsRead());
+      }
+  };
+  const notificationBell = (
+    <div className="dropdown dropdown-end">
+        <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
+            <div className="indicator">
+                <FiBell size={20} />
+                {unreadCount > 0 && <span className="badge badge-xs badge-primary indicator-item">{unreadCount}</span>}
+            </div>
+        </div>
+        <div tabIndex={0} className="dropdown-content card card-compact w-80 bg-base-100 shadow-lg border border-base-300 mt-3">
+            <div className="card-body">
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="card-title text-base">Bildirimler</h3>
+                    {unreadCount > 0 && <button onClick={handleMarkAllRead} className="link link-primary text-xs">Tümünü Okundu İşaretle</button>}
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                        notifications.map(notif => (
+                            <Link to={notif.link} key={notif._id} className={`block p-2 rounded-lg mb-1 hover:bg-base-200 ${!notif.isRead ? 'bg-blue-500/10' : ''}`}>
+                                <div className="flex items-start gap-3">
+                                    <div className="avatar">
+                                        <div className="w-8 rounded-full">
+                                            <img src={notif.sender.avatar?.url || `https://ui-avatars.com/api/?name=${notif.sender.username}`} alt="sender"/>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm">{notif.message}</p>
+                                        <time className="text-xs opacity-50">{new Date(notif.createdAt).toLocaleString('tr-TR')}</time>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))
+                    ) : (
+                        <p className="text-center text-sm opacity-60 p-4">Yeni bildirim yok.</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+
   // Mobil menü için navigation linkleri
   const navigationLinks = [
     { to: '/', label: 'Ana Sayfa', icon: FiHome },
@@ -30,7 +85,9 @@ const Navbar = () => {
 
   // Kullanıcı giriş yapmışsa gösterilecek menü
   const loggedInMenu = (
+    
     <div className="flex items-center gap-2">
+      {notificationBell}
       {/* Admin Link - Render only if user is admin */}
       {isAdmin && (
         <Link 
@@ -41,7 +98,7 @@ const Navbar = () => {
           <FiSettings size={20} />
         </Link>
       )}
-
+      
       {/* Masaüstü kullanıcı menüsü */}
       <div className="dropdown dropdown-end">
         <div
