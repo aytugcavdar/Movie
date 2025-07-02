@@ -140,6 +140,11 @@ const MovieSchema = new mongoose.Schema({
       min: [0, 'Beğeni sayısı negatif olamaz']
     }
   },
+  videos: [{
+    key: { type: String, unique: true, sparse: true }, // YouTube video ID'si gibi
+    site: { type: String, enum: ['YouTube', 'Vimeo'], default: 'YouTube' },
+    type: { type: String, enum: ['Trailer', 'Teaser', 'Clip', 'Behind the Scenes', 'Featurette', 'Opening Credits', 'Scene', 'Bloopers'], default: 'Trailer' }
+}],
   // TMDB'den son güncelleme tarihi
   lastTmdbUpdate: {
     type: Date,

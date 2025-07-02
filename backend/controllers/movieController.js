@@ -108,6 +108,15 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
     });
 
     const tmdbMovie = movieResponse.data;
+    const movieVideos = tmdbMovie.videos?.results
+      .filter(video => video.site === 'YouTube' && (video.type === 'Trailer' || video.type === 'Teaser')) // Sadece YouTube fragmanları veya teaser'ları alıyoruz
+      .map(video => ({
+        key: video.key,
+        site: video.site,
+        type: video.type
+      }));
+
+
 
     movie = await Movie.create({
       tmdbId: tmdbMovie.id,
@@ -132,6 +141,7 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       popularity: tmdbMovie.popularity,
       status: tmdbMovie.status,
       adult: tmdbMovie.adult,
+      videos: movieVideos,
       platformStats: {
         viewCount: 0,
         likeCount: 0,
@@ -140,10 +150,10 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       }
     });
 
-    // Oyuncu kadrosunu işle (Cast)
+    
     if (tmdbMovie.credits && tmdbMovie.credits.cast) {
       for (const castMember of tmdbMovie.credits.cast) {
-        // Her oyuncu için detaylı bilgiyi çek
+        
         const personDetails = await getFullPersonDetails(castMember.id);
         
         const personData = {
@@ -186,7 +196,7 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       }
     }
 
-    // Teknik ekibi işle (Crew)
+    
     if (tmdbMovie.credits && tmdbMovie.credits.crew) {
       for (const crewMember of tmdbMovie.credits.crew) {
         const personDetails = await getFullPersonDetails(crewMember.id);
@@ -239,7 +249,7 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
   } catch (error) {
     console.error('TMDB API veya veritabanı kaydetme hatası:', error.message, error.stack);
     if (movie && movie._id) {
-        await Movie.findByIdAndDelete(movie._id); // Eğer film oluşturulduysa ama işlem yarım kaldıysa, filmi sil.
+        await Movie.findByIdAndDelete(movie._id); 
     }
     return next(new ErrorResponse(`Film eklenirken bir hata oluştu: ${error.message}`, 500));
   }

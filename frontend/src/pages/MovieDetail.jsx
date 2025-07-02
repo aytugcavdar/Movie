@@ -1,4 +1,4 @@
-// frontend/src/pages/MovieDetail.jsx
+
 
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -44,10 +44,11 @@ const MovieDetail = () => {
     voteAverage,
     cast,
     crew,
+    videos
   } = selectedMovie;
 
     const shareUrl = window.location.href;
-
+  console.log('Videolar:', selectedMovie.videos);
   return (
     <div className="min-h-screen bg-base-200 p-4 md:p-8">
       <div className="card lg:card-side bg-base-100 shadow-xl max-w-6xl mx-auto">
@@ -104,6 +105,25 @@ const MovieDetail = () => {
               </div>
             </div>
           )}
+          {selectedMovie.videos && selectedMovie.videos.length > 0 && (
+  <div className="mt-8">
+    <h3 className="text-xl font-bold mb-4">Fragmanlar</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {selectedMovie.videos.filter(v => v.type === 'Trailer' && v.site === 'YouTube').slice(0,2).map((video) => ( // Sadece ilk 2 fragmanı göster
+        <div key={video.key} className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg">
+          <iframe
+            className="w-full h-full"
+            src={`https://www.youtube.com/embed/${video.key}`}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={selectedMovie.title + " Fragman"}
+          ></iframe>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           {/* Oyuncular */}
           {cast && cast.length > 0 && (
