@@ -7,6 +7,7 @@ const {
     addMovieToList,
     removeMovieFromList,
     deleteList,
+    updateList,
     likeList
 } = require('../controllers/listController');
 
@@ -14,17 +15,18 @@ const { protect } = require('../middlewares/authMiddeleware');
 
 const router = express.Router();
 
-// Tüm listeler için olan route'lar korumalı olmalı
+
 router.route('/')
     .get(protect, getLists)
     .post(protect, createList);
 
 // Tekil liste işlemleri
 router.route('/:id')
-    .get(getList) // Herkese açık olabilir, controller içinde kontrol ediliyor
-    .delete(protect, deleteList);
+    .get(getList) 
+    .delete(protect, deleteList)
+    .put(protect, updateList);
 
-// Liste içindeki film işlemleri
+
 router.route('/:id/movies')
     .post(protect, addMovieToList);
 

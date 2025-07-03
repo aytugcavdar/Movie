@@ -118,6 +118,51 @@ export const removeMovieFromWatchlist = createAsyncThunk(
         }
     }
 );
+export const updateWatchlist = createAsyncThunk(
+    'watchlists/updateWatchlist',
+    async ({ watchlistId, watchlistData }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${watchlistId}`, {
+                method: 'PUT', // PUT isteği ile güncelliyoruz
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(watchlistData),
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return rejectWithValue(data.message || 'İzleme listesi güncellenemedi.');
+            }
+            toast.success("İzleme listesi başarıyla güncellendi!");
+            return data.data; // Güncellenmiş liste verilerini döndür
+        } catch (error) {
+            return rejectWithValue(error.message || 'Ağ hatası.');
+        }
+    }
+);
+export const deleteWatchlist = createAsyncThunk(
+    'watchlists/deleteWatchlist',
+    async (watchlistId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${watchlistId}`, {
+                method: 'DELETE', // DELETE isteği ile siliyoruz
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || 'İzleme listesi silinemedi.');
+            }
+            // Başarılı olursa silinen listenin ID'sini döndür
+            return watchlistId;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Ağ hatası.');
+        }
+    }
+);
 
 const watchlistSlice = createSlice({
     name: 'watchlists',
@@ -191,6 +236,39 @@ const watchlistSlice = createSlice({
             .addCase(removeMovieFromWatchlist.rejected, (state, action) => {
                 state.error = action.payload || 'Film çıkarılamadı';
                 toast.error(action.payload || 'Film çıkarılamadı');
+            })
+            .addCase(updateWatchlist.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(updateWatchlist.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Güncellenen listeyi bul ve state'deki ile değiştir
+                const index = state.items.findIndex(item => item._id === action.payload._id);
+                if (index !== -1) {
+                    state.items[index] = action.payload;
+                }
+                state.error = null;
+            })
+            .addCase(updateWatchlist.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || 'İzleme listesi güncellenemedi';
+                toast.error(action.payload || 'İzleme listesi güncellenemedi');
+            })
+            .addCase(deleteWatchlist.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(deleteWatchlist.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Silinen izleme listesini listeden çıkar
+                state.items = state.items.filter(item => item._id !== action.payload);
+                state.error = null;
+            })
+            .addCase(deleteWatchlist.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || 'İzleme listesi silinemedi';
+                toast.error(action.payload || 'İzleme listesi silinemedi');
             });
     }
 });

@@ -9,6 +9,7 @@ import listReducer from './listSlice';
 import adminReducer from './adminSlice';
 import notificationReducer from './notificationSlice';
 import statisticsReducer from './statisticsSlice';
+import feedReducer from './feedSlice';
 
 
 
@@ -23,6 +24,7 @@ export const store = configureStore({
     admin: adminReducer,
     notifications: notificationReducer,
     statistics: statisticsReducer,
+    feed: feedReducer,
 
   },
   

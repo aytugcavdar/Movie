@@ -3,26 +3,34 @@
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchMovieById } from "../redux/movieSlice";
+import { fetchMovieById, likeMovie } from "../redux/movieSlice"; // likeMovie thunk'ı eklendi
 import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
 import AddToWatchlistButton from '../components/AddToWatchlistButton';
 import { Link } from "react-router-dom";
 import SocialShareButtons from "../components/SocialShareButtons";
-
-
+import { FiHeart } from 'react-icons/fi'; // Beğeni ikonu eklendi
+import { toast } from 'react-toastify'; // toast bildirimleri için
 
 const MovieDetail = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { selectedMovie, status, error } = useSelector((state) => state.movie);
+  const { isAuthenticated } = useSelector((state) => state.auth); // Kullanıcının oturum açıp açmadığını kontrol etmek için
 
   useEffect(() => {
-    
     if (id) {
       dispatch(fetchMovieById(id));
     }
   }, [id, dispatch]);
+
+  const handleLike = () => {
+    if (!isAuthenticated) {
+      toast.error("Filmi beğenmek için giriş yapmalısınız.");
+      return;
+    }
+    dispatch(likeMovie(id));
+  };
 
   if (status === "loading")
     return (
@@ -44,11 +52,13 @@ const MovieDetail = () => {
     voteAverage,
     cast,
     crew,
-    videos
+    videos,
+    platformStats, // platformStats eklendi
+    isLikedByUser // isLikedByUser eklendi
   } = selectedMovie;
 
-    const shareUrl = window.location.href;
-  console.log('Videolar:', selectedMovie.videos);
+  const shareUrl = window.location.href;
+
   return (
     <div className="min-h-screen bg-base-200 p-4 md:p-8">
       <div className="card lg:card-side bg-base-100 shadow-xl max-w-6xl mx-auto">
@@ -86,9 +96,17 @@ const MovieDetail = () => {
               <div className="stat-value">{runtime} dk</div>
             </div>
           </div>
-          {/* İzleme Listesine Ekleme ve Sosyal Paylaşım Butonları */}
+          {/* İzleme Listesine Ekleme, Beğeni ve Sosyal Paylaşım Butonları */}
           <div className="flex flex-wrap gap-4 items-center justify-start mt-6">
             <AddToWatchlistButton movieId={id} />
+            <button
+              onClick={handleLike}
+              className={`btn ${isLikedByUser ? 'btn-secondary' : 'btn-outline'} ${isAuthenticated ? '' : 'btn-disabled'}`}
+              disabled={!isAuthenticated || status === 'loading'}
+            >
+              <FiHeart className={`${isLikedByUser ? 'text-red-500' : ''}`} />
+              {platformStats?.likeCount || 0} Beğeni
+            </button>
             <SocialShareButtons shareUrl={shareUrl} title={title} />
           </div>
           
@@ -106,24 +124,24 @@ const MovieDetail = () => {
             </div>
           )}
           {selectedMovie.videos && selectedMovie.videos.length > 0 && (
-  <div className="mt-8">
-    <h3 className="text-xl font-bold mb-4">Fragmanlar</h3>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {selectedMovie.videos.filter(v => v.type === 'Trailer' && v.site === 'YouTube').slice(0,2).map((video) => ( // Sadece ilk 2 fragmanı göster
-        <div key={video.key} className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.youtube.com/embed/${video.key}`}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title={selectedMovie.title + " Fragman"}
-          ></iframe>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+            <div className="mt-8">
+              <h3 className="text-xl font-bold mb-4">Fragmanlar</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedMovie.videos.filter(v => v.type === 'Trailer' && v.site === 'YouTube').slice(0,2).map((video) => ( // Sadece ilk 2 fragmanı göster
+                  <div key={video.key} className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg">
+                    <iframe
+                      className="w-full h-full"
+                      src={`https://www.youtube.com/embed/${video.key}`} // Youtube embed URL'i düzeltildi
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={selectedMovie.title + " Fragman"}
+                    ></iframe>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Oyuncular */}
           {cast && cast.length > 0 && (
@@ -152,14 +170,8 @@ const MovieDetail = () => {
             <ReviewList reviews={selectedMovie?.reviews ?? []} />
           </div>
         </div>
-        
-          
-          
-        
         </div>
-
     </div>
-    
   );
 };
 

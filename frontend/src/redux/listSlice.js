@@ -80,6 +80,48 @@ export const likeList = createAsyncThunk('lists/likeList', async (listId, { reje
         return rejectWithValue(error.message);
     }
 });
+export const updateList = createAsyncThunk(
+    'lists/updateList',
+    async ({ listId, listData }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${listId}`, {
+                method: 'PUT', // PUT isteği ile güncelliyoruz
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(listData),
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return rejectWithValue(data.message || 'Liste güncellenemedi.');
+            }
+            toast.success("Liste başarıyla güncellendi!");
+            return data.data; // Güncellenmiş liste verilerini döndür
+        } catch (error) {
+            return rejectWithValue(error.message || 'Ağ hatası.');
+        }
+    }
+);
+export const deleteList = createAsyncThunk(
+    'lists/deleteList',
+    async (listId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${listId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (!response.ok) return rejectWithValue(data.message || 'Liste silinemedi.');
+            toast.success("Liste başarıyla silindi!");
+            return listId; 
+        } catch (error) {
+            return rejectWithValue(error.message || 'Ağ hatası.');
+        }
+    }
+);
 
 
 const listSlice = createSlice({
@@ -141,6 +183,49 @@ const listSlice = createSlice({
                 if (index !== -1) {
                     state.lists[index].likesCount = action.payload.likesCount;
                 }
+            })
+            .addCase(updateList.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(updateList.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Tüm listeler dizisinde güncellenen listeyi bul ve değiştir
+                const allListsIndex = state.lists.findIndex(list => list._id === action.payload._id);
+                if (allListsIndex !== -1) {
+                    state.lists[allListsIndex] = action.payload;
+                }
+                // Eğer görüntülenen liste güncellenen liste ise, onu da güncelle
+                if (state.selectedList && state.selectedList._id === action.payload._id) {
+                    state.selectedList = action.payload;
+                }
+                state.error = null;
+            })
+            .addCase(updateList.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || 'Liste güncellenemedi';
+                toast.error(action.payload || 'Liste güncellenemedi');
+            })
+            .addCase(deleteList.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            }
+            )
+            .addCase(deleteList.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Silinen listeyi tüm listelerden kaldır
+                state.lists = state.lists.filter(list => list._id !== action.payload);
+                // Eğer görüntülenen liste silinmişse, onu da null yap
+                if (state.selectedList && state.selectedList._id === action.payload) {
+                    state.selectedList = null;
+                }
+                state.error = null;
+            }
+            )
+            .addCase(deleteList.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || 'Liste silinemedi';
+                toast.error(action.payload || 'Liste silinemedi');
             });
     }
 });

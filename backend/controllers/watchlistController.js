@@ -61,3 +61,47 @@ exports.removeMovieFromWatchlist = asyncHandler(async (req, res, next) => {
     await watchlist.removeMovie(req.params.movieId);
     res.status(200).json({ success: true, data: watchlist });
 });
+// @desc    Bir izleme listesini sil
+// @route   DELETE /api/v1/watchlists/:id
+// @access  Private
+exports.deleteWatchlist = asyncHandler(async (req, res, next) => {
+    const watchlist = await Watchlist.findById(req.params.id);
+
+    if (!watchlist) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan izleme listesi bulunamadı`, 404));
+    }
+
+    // Yalnızca liste sahibi silebilir
+    if (watchlist.user.toString() !== req.user.id.toString()) {
+        return next(new ErrorResponse(`Bu izleme listesini silme yetkiniz yok`, 403));
+    }
+
+    await watchlist.deleteOne();
+
+    res.status(200).json({ success: true, data: {}, message: 'İzleme listesi başarıyla silindi.' });
+});
+// @desc    İzleme listesini güncelle
+// @route   PUT /api/v1/watchlists/:id
+// @access  Private
+exports.updateWatchlist = asyncHandler(async (req, res, next) => {
+    let watchlist = await Watchlist.findById(req.params.id);
+
+    if (!watchlist) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan liste bulunamadı`, 404));
+    }
+
+    // Sadece sahibi güncelleyebilir
+    if (watchlist.user.toString() !== req.user.id) {
+        return next(new ErrorResponse('Bu izleme listesini güncelleme yetkiniz yok', 403));
+    }
+
+    watchlist = await Watchlist.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+    });
+
+    res.status(200).json({
+        success: true,
+        data: watchlist
+    });
+});

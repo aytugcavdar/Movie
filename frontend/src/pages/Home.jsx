@@ -1,19 +1,24 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // Link eklendi
 import { fetchMovies } from '../redux/movieSlice';
-import { FiStar, FiCalendar, FiClock, FiPlay, FiTrendingUp, FiPlus } from 'react-icons/fi';
+import { fetchFollowingFeed } from '../redux/feedSlice'; // feedSlice eklendi
+import { FiStar, FiCalendar, FiClock, FiPlay, FiTrendingUp, FiPlus, FiUser, FiFilm, FiList } from 'react-icons/fi'; // Yeni ikonlar eklendi
 import MovieCard from '../components/MovieCard';
 
 const Home = () => {
   const dispatch = useDispatch();
   const { movies, status, error } = useSelector((state) => state.movie);
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth); // user eklendi
+  const { feedItems, status: feedStatus } = useSelector((state) => state.feed); // feedItems ve feedStatus eklendi
   const navigate = useNavigate();
 
   useEffect(() => {
     dispatch(fetchMovies());
-  }, [dispatch]);
+    if (isAuthenticated) {
+        dispatch(fetchFollowingFeed()); // Kullanıcı giriş yaptıysa feed'i çek
+    }
+  }, [dispatch, isAuthenticated]);
 
   const formatRuntime = (minutes) => {
     if (!minutes) return 'Bilinmiyor';
@@ -40,7 +45,7 @@ const Home = () => {
     <div className="flex justify-center items-center min-h-screen">
       <div className="flex flex-col items-center gap-4">
         <span className="loading loading-spinner loading-lg text-primary"></span>
-        <p className="text-base-content/70">Filmler yükleniyor...</p>
+        <p className="text-base-content/70">Yükleniyor...</p>
       </div>
     </div>
   );
@@ -151,12 +156,89 @@ const Home = () => {
         {/* Welcome Message */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-base-content mb-2">
-            {isAuthenticated ? 'Hoş Geldiniz!' : 'Movie App\'e Hoş Geldiniz!'}
+            {isAuthenticated ? `Hoş Geldiniz, ${user?.username}!` : 'Movie App\'e Hoş Geldiniz!'}
           </h2>
           <p className="text-base-content/70 max-w-2xl mx-auto">
             En popüler filmleri keşfedin, incelemeler okuyun ve kendi izleme listelerinizi oluşturun.
           </p>
         </div>
+
+        {/* Takip Edilenler Akışı (Sadece giriş yapmış kullanıcılar için) */}
+        {isAuthenticated && (
+            <section className="mb-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-base-content flex items-center gap-2">
+                        <FiUser className="text-primary" />
+                        Takip Edilenlerin Akışı
+                    </h3>
+                </div>
+                {feedStatus === 'loading' && <div className="text-center"><span className="loading loading-spinner loading-md"></span></div>}
+                {feedStatus === 'failed' && <div className="alert alert-error">Akış yüklenirken hata oluştu.</div>}
+                {feedStatus === 'succeeded' && feedItems.length > 0 ? (
+                    <div className="space-y-4">
+                        {feedItems.map(item => (
+                            <div key={item._id} className="card bg-base-100 shadow-md">
+                                <div className="card-body p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="avatar">
+                                            <div className="w-8 rounded-full">
+                                                <img src={item.user?.avatar?.url || `https://ui-avatars.com/api/?name=${item.user?.username}`} alt="User Avatar" />
+                                            </div>
+                                        </div>
+                                        <Link to={`/users/${item.user?.username}`} className="font-semibold link link-hover">
+                                            {item.user?.username}
+                                        </Link>
+                                        <span className="text-sm opacity-70">
+                                            {item.type === 'review' ? (
+                                                <>
+                                                    <FiFilm className="inline-block mx-1" />
+                                                    "**{item.movie?.title}**" filmine yorum yaptı:
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FiList className="inline-block mx-1" />
+                                                    "**{item.title}**" adında yeni bir liste oluşturdu.
+                                                </>
+                                            )}
+                                        </span>
+                                    </div>
+                                    {item.type === 'review' && (
+                                        <p className="text-sm mt-2 opacity-80 line-clamp-2">"{item.content}"</p>
+                                    )}
+                                    {item.type === 'list' && (
+                                        <p className="text-sm mt-2 opacity-80 line-clamp-2">"{item.description || 'Açıklama yok.'}"</p>
+                                    )}
+                                    <div className="text-xs opacity-50 text-right mt-2">
+                                        {new Date(item.createdAt).toLocaleString('tr-TR')}
+                                    </div>
+                                    <div className="card-actions justify-end mt-2">
+                                        {item.type === 'review' && (
+                                            <Link to={`/movies/${item.movie._id}`} className="btn btn-sm btn-ghost">
+                                                İncelemeyi Gör
+                                            </Link>
+                                        )}
+                                        {item.type === 'list' && (
+                                            <Link to={`/lists/${item._id}`} className="btn btn-sm btn-ghost">
+                                                Listeyi Gör
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    isAuthenticated && feedStatus === 'succeeded' && feedItems.length === 0 && (
+                        <div className="text-center p-6 bg-base-100 rounded-lg shadow-inner">
+                            <p className="text-lg mb-2">Takip ettiğiniz kişilerin yeni bir aktivitesi yok.</p>
+                            <p className="opacity-70 max-w-md mx-auto">
+                                Yeni aktiviteleri görmek için daha fazla kullanıcıyı takip edebilir veya kendi aktivitelerinizi oluşturabilirsiniz.
+                            </p>
+                        </div>
+                    )
+                )}
+            </section>
+        )}
 
         {/* Stats */}
         {movies && movies.length > 0 && (

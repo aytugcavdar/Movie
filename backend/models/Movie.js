@@ -145,6 +145,17 @@ const MovieSchema = new mongoose.Schema({
     site: { type: String, enum: ['YouTube', 'Vimeo'], default: 'YouTube' },
     type: { type: String, enum: ['Trailer', 'Teaser', 'Clip', 'Behind the Scenes', 'Featurette', 'Opening Credits', 'Scene', 'Bloopers'], default: 'Trailer' }
 }],
+  // Yeni eklenen beğeniler dizisi
+  likes: [{
+    user: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'
+    },
+    likedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   // TMDB'den son güncelleme tarihi
   lastTmdbUpdate: {
     type: Date,
@@ -276,6 +287,21 @@ MovieSchema.methods.updateWatchlistCount = async function() {
   
   this.platformStats.watchlistCount = count;
   await this.save();
+};
+
+MovieSchema.methods.toggleLike = async function(userId) {
+  const existingLike = this.likes.find(like => like.user.toString() === userId.toString());
+  
+  if (existingLike) {
+    this.likes = this.likes.filter(like => like.user.toString() !== userId.toString());
+    this.platformStats.likeCount = Math.max(0, this.platformStats.likeCount - 1);
+  } else {
+    this.likes.push({ user: userId });
+    this.platformStats.likeCount += 1;
+  }
+  
+  await this.save();
+  return !existingLike; 
 };
 
 module.exports = mongoose.model('Movie', MovieSchema);

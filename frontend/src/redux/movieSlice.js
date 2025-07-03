@@ -1,12 +1,12 @@
+// frontend/src/redux/movieSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { toast } from 'react-toastify'; // toast bildirimleri için
 
 const initialState = {
     movies: [],
     status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null,
     selectedMovie: null,
-    
-
 };
 
 const API_URL = 'http://localhost:4000/api/v1/movies';
@@ -60,15 +60,20 @@ export const fetchMovieFromTMDB = createAsyncThunk(
 );
 export const fetchMovieById = createAsyncThunk(
     'movies/fetchMovieById',
-    async (movieId, { rejectWithValue }) => {
+    async (movieId, { rejectWithValue, getState }) => { // getState eklendi
         try {
-            const response = await fetch(`${API_URL}/${movieId}`);
+            const response = await fetch(`${API_URL}/${movieId}`, { credentials: 'include' }); // Cookie göndermek için credentials eklendi
             if (!response.ok) {
                 const errorData = await response.json();
                 return rejectWithValue(errorData.message);
             }
             const data = await response.json();
-            return data.data;
+
+            // Filmi beğenen kullanıcılar arasında mevcut kullanıcı var mı kontrol et
+            const { auth } = getState();
+            const isLikedByUser = auth.isAuthenticated && data.data.likes.some(like => like.user === auth.user.id);
+            
+            return { ...data.data, isLikedByUser }; // isLikedByUser bilgisini ekleyerek dön
         } catch (error) {
             return rejectWithValue(error.message);
         }
@@ -160,6 +165,36 @@ export const likeReview = createAsyncThunk(
     }
 );
 
+// YENİ THUNK: likeMovie
+export const likeMovie = createAsyncThunk(
+    'movies/likeMovie',
+    async (movieId, { rejectWithValue, getState }) => {
+        try {
+            const response = await fetch(`${API_URL}/${movieId}/like`, {
+                method: 'PUT',
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                toast.error(data.message || 'Film beğenilirken bir hata oluştu!');
+                return rejectWithValue(data.message);
+            }
+            toast.success(data.message);
+
+            // Redux state'indeki selectedMovie'i güncellemek için gerekli bilgiler
+            const { auth } = getState();
+            return {
+                movieId,
+                likesCount: data.data.likesCount,
+                isLikedByUser: data.data.isLikedByUser,
+                currentUserId: auth.user.id // Kullanıcının beğenisini doğru bir şekilde yönetmek için
+            };
+        } catch (error) {
+            toast.error(error.message || 'Ağ hatası oluştu!');
+            return rejectWithValue(error.message);
+        }
+    }
+);
 
 
 const movieSlice = createSlice({
@@ -279,6 +314,24 @@ const movieSlice = createSlice({
             .addCase(likeReview.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
+            })
+           
+            .addCase(likeMovie.fulfilled, (state, action) => {
+                if (state.selectedMovie && state.selectedMovie._id === action.payload.movieId) {
+                    
+                    state.selectedMovie.platformStats.likeCount = action.payload.likesCount;
+                    
+                    state.selectedMovie.isLikedByUser = action.payload.isLikedByUser;
+                }
+               
+                const movieIndex = state.movies.findIndex(movie => movie._id === action.payload.movieId);
+                if (movieIndex !== -1) {
+                    state.movies[movieIndex].platformStats.likeCount = action.payload.likesCount;
+                   
+                }
+            })
+            .addCase(likeMovie.rejected, (state, action) => {
+                state.error = action.payload; 
             });
     },
 });

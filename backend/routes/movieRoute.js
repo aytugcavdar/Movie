@@ -1,10 +1,12 @@
+// backend/routes/movieRoute.js
 const express = require('express');
 const {
     getMovies,
     getMovie,
     fetchMovieFromTMDB,
     updateMovie,
-    deleteMovie  
+    deleteMovie,
+    likeMovie // likeMovie controller fonksiyonu eklendi
 } = require('../controllers/movieController');
 const reviewRouter = require('./reviewRoute');
 const Movie = require('../models/Movie');
@@ -32,8 +34,9 @@ router.route('/:id')
     .put(protect, authorize('admin'), updateMovie)
     .delete(protect, authorize('admin'), deleteMovie);
 
+// Yeni beğeni endpoint'i eklendi
+router.route('/:id/like').put(protect, likeMovie); //
+
 router.use('/:movieId/reviews', reviewRouter);
-
-
 
 module.exports = router;

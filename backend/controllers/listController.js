@@ -156,3 +156,33 @@ exports.likeList = asyncHandler(async (req, res, next) => {
         message
     });
 });
+// @desc    Listeyi güncelle
+// @route   PUT /api/v1/lists/:id
+// @access  Private
+exports.updateList = asyncHandler(async (req, res, next) => {
+    let list = await List.findById(req.params.id);
+
+    if (!list) {
+        return next(new ErrorResponse('Liste bulunamadı', 404));
+    }
+
+    if (list.user.toString() !== req.user.id) {
+        return next(new ErrorResponse('Bu listeyi güncelleme yetkiniz yok', 403));
+    }
+
+    const fieldsToUpdate = {
+        title: req.body.title || list.title,
+        description: req.body.description || list.description,
+        isPublic: typeof req.body.isPublic === 'boolean' ? req.body.isPublic : list.isPublic,
+    };
+
+    list = await List.findByIdAndUpdate(req.params.id, fieldsToUpdate, {
+        new: true,
+        runValidators: true
+    });
+
+    res.status(200).json({
+        success: true,
+        data: list
+    });
+});

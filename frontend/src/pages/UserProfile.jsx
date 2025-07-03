@@ -1,3 +1,4 @@
+// frontend/src/pages/UserProfile.jsx
 
 import React, { useEffect,useState  } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -25,14 +26,17 @@ const UserProfile = () => {
       
         if (!profileData) {
             dispatch(fetchUserProfile(username));
-        }if (profileData?.user?._id && !statsData) {
+        }
+        // İstatistikleri sadece kullanıcı profili yüklendiyse ve istatistikler henüz yüklenmediyse çek
+        if (profileData?.user?._id && statsStatus === 'idle') {
             dispatch(fetchStatistics(profileData.user._id));
         }
-    }, [dispatch, username, profileData, statsData]);
+    }, [dispatch, username, profileData, statsStatus]); // statsStatus bağımlılığı eklendi
 
     useEffect(() => {
         if (currentUser && profileData?.user?.followers) {
-            setIsFollowing(profileData.user.followers.includes(currentUser.id));
+            // Kullanıcının takipçiler listesinde mevcut kullanıcı ID'si varsa isFollowing true olur
+            setIsFollowing(profileData.user.followers.some(followerId => followerId === currentUser.id));
         }
     }, [currentUser, profileData]);
 
@@ -84,43 +88,74 @@ const UserProfile = () => {
                             <div><span className="font-bold">{user.followersCount || 0}</span> Takipçi</div>
                             <div><span className="font-bold">{user.followingCount || 0}</span> Takip</div>
                         </div>
-                         <div className="mt-4">
+                         {currentUser && currentUser.id !== user._id && ( // Kendi profilini takip etme butonu gösterme
+                            <div className="mt-4">
                                 <button onClick={handleFollow} className={`btn ${isFollowing ? 'btn-outline' : 'btn-primary'}`}>
                                     {isFollowing ? <FiUserCheck /> : <FiUserPlus />}
                                     {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
                                 </button>
                             </div>
+                         )}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Sol Sütun: Yorumlar */}
-
-                    
+                    {/* Sol Sütun: İstatistikler ve Yorumlar */}
                     <div className="lg:col-span-2 space-y-6">
                          <div className="card bg-base-100 shadow-lg">
                             <div className="card-body">
                                 <h3 className="card-title text-xl flex items-center gap-2"><FiBarChart2 /> İstatistikler</h3>
                                 {statsStatus === 'loading' && <span className="loading loading-dots loading-md"></span>}
-                                {statsData && (
-                                    <div className="stats stats-vertical md:stats-horizontal shadow w-full">
-                                        <div className="stat">
-                                            <div className="stat-title">Toplam Yorum</div>
-                                            <div className="stat-value text-primary">{statsData.stats.totalReviews}</div>
+                                {statsData ? (
+                                    <>
+                                        <div className="stats stats-vertical md:stats-horizontal shadow w-full mb-4">
+                                            <div className="stat">
+                                                <div className="stat-title">Toplam Yorum</div>
+                                                <div className="stat-value text-primary">{statsData.stats.totalReviews}</div>
+                                            </div>
+                                            <div className="stat">
+                                                <div className="stat-title">Ortalama Puan</div>
+                                                <div className="stat-value text-secondary">{statsData.stats.averageRating?.toFixed(1) || 'N/A'}</div>
+                                            </div>
+                                            <div className="stat">
+                                                <div className="stat-title">Alınan Beğeni</div>
+                                                <div className="stat-value text-accent">{statsData.stats.totalLikesReceived || 0}</div>
+                                            </div>
                                         </div>
-                                        <div className="stat">
-                                            <div className="stat-title">Ortalama Puan</div>
-                                            <div className="stat-value text-secondary">{statsData.stats.averageRating?.toFixed(1) || 'N/A'}</div>
-                                        </div>
-                                        <div className="stat">
-                                            <div className="stat-title">Favori Tür</div>
-                                            <div className="stat-value text-accent">{statsData.genres[0]?._id || 'N/A'}</div>
-                                            <div className="stat-desc">{statsData.genres[0]?.count || 0} film</div>
-                                        </div>
-                                    </div>
+
+                                        {statsData.genres && statsData.genres.length > 0 && (
+                                            <div className="mb-4">
+                                                <h4 className="font-bold mb-2">Favori Türler</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {statsData.genres.slice(0, 5).map(genre => ( // İlk 5 türü göster
+                                                        <div key={genre._id} className="badge badge-outline badge-info">
+                                                            {genre._id} ({genre.count})
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {statsData.decades && statsData.decades.length > 0 && (
+                                            <div>
+                                                <h4 className="font-bold mb-2">Yıllara Göre Film Dağılımı</h4>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                    {statsData.decades.map(decade => (
+                                                        <div key={decade._id} className="bg-base-200 p-2 rounded-lg flex justify-between items-center text-sm">
+                                                            <span>{decade._id}</span>
+                                                            <span className="font-semibold">{decade.count}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    statsStatus === 'succeeded' && <div className="text-center text-base-content/70 p-4">Henüz istatistik verisi yok.</div>
                                 )}
                             </div>
                         </div>
+
                         <h3 className="text-2xl font-bold flex items-center gap-2"><FiFilm /> Son Yorumlar</h3>
                         {reviews && reviews.length > 0 ? (
                             reviews.map(review => (

@@ -4,7 +4,9 @@ const {
     getMyWatchlists,
     createWatchlist,
     addMovieToWatchlist,
-    removeMovieFromWatchlist
+    removeMovieFromWatchlist,
+    updateWatchlist,
+    deleteWatchlist
 } = require('../controllers/watchlistController');
 const { protect } = require('../middlewares/authMiddeleware');
 
@@ -14,7 +16,11 @@ router.use(protect);
 
 router.route('/')
     .get(getMyWatchlists)
-    .post(createWatchlist);
+    .post(createWatchlist)
+
+router.route('/:id')
+    .put(updateWatchlist)
+    .delete(deleteWatchlist); 
 
 router.route('/:id/movies')
     .post(addMovieToWatchlist);

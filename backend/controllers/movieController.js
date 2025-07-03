@@ -1,3 +1,4 @@
+// backend/controllers/movieController.js
 const axios = require('axios');
 const Movie = require('../models/Movie');
 const Person = require('../models/Person');
@@ -5,6 +6,7 @@ const Cast = require('../models/Cast');
 const Crew = require('../models/Crew');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const Notification = require('../models/Notification'); // Notification modeli eklendi
 
 // TMDB API yapılandırması
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -143,7 +145,7 @@ exports.fetchMovieFromTMDB = asyncHandler(async (req, res, next) => {
       videos: movieVideos,
       platformStats: {
         viewCount: 0,
-        likeCount: 0,
+        likeCount: 0, // Bu başlangıçta 0 olacak
         watchlistCount: 0,
         reviewCount: 0
       }
@@ -296,4 +298,30 @@ exports.deleteMovie = asyncHandler(async (req, res, next) => {
     data: {},
     message: 'Film ve ilişkili tüm kayıtlar başarıyla silindi'
   });
+});
+
+// @desc    Bir filmi beğen/beğenmekten vazgeç
+// @route   PUT /api/v1/movies/:id/like
+// @access  Private
+exports.likeMovie = asyncHandler(async (req, res, next) => {
+    const movie = await Movie.findById(req.params.id);
+
+    if (!movie) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan film bulunamadı`, 404));
+    }
+
+    const isLiked = await movie.toggleLike(req.user.id);
+    
+ 
+    
+    const message = isLiked ? 'Film beğenildi.' : 'Film beğenmekten vazgeçildi.';
+
+    res.status(200).json({
+        success: true,
+        data: {
+            likesCount: movie.platformStats.likeCount,
+            isLikedByUser: isLiked 
+        },
+        message
+    });
 });
