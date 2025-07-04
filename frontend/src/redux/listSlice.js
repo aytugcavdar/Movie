@@ -122,6 +122,32 @@ export const deleteList = createAsyncThunk(
         }
     }
 );
+export const addMovieToList = createAsyncThunk(
+    'lists/addMovieToList',
+    async ({ listId, movieId, notes = '' }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${listId}/movies`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ movieId, notes }),
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return rejectWithValue(data.message || 'Film listeye eklenemedi.');
+            }
+            toast.success("Film listeye eklendi!");
+            return data.data; // Güncellenmiş listeyi döndür
+        } catch (error) {
+            return rejectWithValue(error.message || 'Ağ hatası.');
+        }
+    }
+);
+
 
 
 const listSlice = createSlice({
@@ -226,6 +252,28 @@ const listSlice = createSlice({
                 state.status = 'failed';
                 state.error = action.payload || 'Liste silinemedi';
                 toast.error(action.payload || 'Liste silinemedi');
+            })
+            .addCase(addMovieToList.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(addMovieToList.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                
+                const index = state.lists.findIndex(list => list._id === action.payload._id);
+                if (index !== -1) {
+                    state.lists[index] = action.payload; 
+                }
+                
+                if (state.selectedList && state.selectedList._id === action.payload._id) {
+                    state.selectedList = action.payload;
+                }
+                state.error = null;
+            })
+            .addCase(addMovieToList.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload || 'Film listeye eklenemedi.';
+                toast.error(action.payload || 'Film listeye eklenemedi.');
             });
     }
 });

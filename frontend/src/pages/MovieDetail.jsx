@@ -1,28 +1,33 @@
-// frontend/src/pages/MovieDetail.jsx
+
 
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchMovieById, likeMovie } from "../redux/movieSlice"; // likeMovie thunk'ı eklendi
+import { fetchMovieById, likeMovie } from "../redux/movieSlice";
 import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
 import AddToWatchlistButton from '../components/AddToWatchlistButton';
 import { Link } from "react-router-dom";
 import SocialShareButtons from "../components/SocialShareButtons";
-import { FiHeart } from 'react-icons/fi'; // Beğeni ikonu eklendi
-import { toast } from 'react-toastify'; // toast bildirimleri için
+import { FiHeart, FiCalendar, FiClock, FiStar, FiChevronRight, FiPlus, FiList, FiPlay, FiUsers, FiUser } from 'react-icons/fi'; 
+import { toast } from 'react-toastify';
+import { fetchLists, addMovieToList } from '../redux/listSlice'; 
 
 const MovieDetail = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { selectedMovie, status, error } = useSelector((state) => state.movie);
-  const { isAuthenticated } = useSelector((state) => state.auth); // Kullanıcının oturum açıp açmadığını kontrol etmek için
+  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { lists, status: listStatus } = useSelector(state => state.list);
 
   useEffect(() => {
     if (id) {
       dispatch(fetchMovieById(id));
     }
-  }, [id, dispatch]);
+    if (isAuthenticated && listStatus === 'idle') {
+        dispatch(fetchLists());
+    }
+  }, [id, dispatch, isAuthenticated, listStatus]);
 
   const handleLike = () => {
     if (!isAuthenticated) {
@@ -32,15 +37,45 @@ const MovieDetail = () => {
     dispatch(likeMovie(id));
   };
 
+  const handleAddMovieToList = async (listId, movieId) => {
+      try {
+          await dispatch(addMovieToList({ listId, movieId })).unwrap();
+      } catch (err) {
+          toast.error(err || "Film listeye eklenirken bir hata oluştu!");
+      }
+  };
+
   if (status === "loading")
     return (
-      <div className="text-center p-10">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral to-base-300">
+        <div className="text-center">
+          <span className="loading loading-spinner loading-lg text-primary mb-4"></span>
+          <p className="text-lg text-base-content/70">Film yükleniyor...</p>
+        </div>
       </div>
     );
-  if (error) return <div className="alert alert-error">Hata: {error}</div>;
+  
+  if (error) 
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral to-base-300">
+        <div className="alert alert-error max-w-md shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Hata: {error}</span>
+        </div>
+      </div>
+    );
+  
   if (!selectedMovie)
-    return <div className="text-center p-10">Film bulunamadı.</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral to-base-300">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎬</div>
+          <p className="text-xl text-base-content/70">Film bulunamadı.</p>
+        </div>
+      </div>
+    );
 
   const {
     title,
@@ -53,124 +88,241 @@ const MovieDetail = () => {
     cast,
     crew,
     videos,
-    platformStats, // platformStats eklendi
-    isLikedByUser // isLikedByUser eklendi
+    platformStats,
+    isLikedByUser
   } = selectedMovie;
 
   const shareUrl = window.location.href;
 
+  const formatRuntime = (minutes) => {
+    if (!minutes) return 'Bilinmiyor';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}s ${mins}d` : `${mins}d`;
+  };
+
   return (
-    <div className="min-h-screen bg-base-200 p-4 md:p-8">
-      <div className="card lg:card-side bg-base-100 shadow-xl max-w-6xl mx-auto">
-        <figure className="lg:w-1/3">
-          <img
-            src={fullPosterUrl}
-            alt={title}
-            className="w-full h-full object-cover"
-          />
-        </figure>
-        <div className="card-body lg:w-2/3">
-          <h1 className="card-title text-3xl md:text-5xl font-bold">{title}</h1>
-          <div className="flex flex-wrap gap-2 my-2">
-            {genres?.map((g) => (
-              <div key={g.id} className="badge badge-primary">
-                {g.name}
-              </div>
-            ))}
-          </div>
-          <p className="my-4">{overview}</p>
-          <div className="stats stats-vertical lg:stats-horizontal shadow bg-base-200">
-            <div className="stat">
-              <div className="stat-title">Puan</div>
-              <div className="stat-value">{voteAverage?.toFixed(1)} / 10</div>
-              <div className="stat-desc">TMDB</div>
-            </div>
-            <div className="stat">
-              <div className="stat-title">Yayın Yılı</div>
-              <div className="stat-value">
-                {new Date(releaseDate).getFullYear()}
-              </div>
-            </div>
-            <div className="stat">
-              <div className="stat-title">Süre</div>
-              <div className="stat-value">{runtime} dk</div>
-            </div>
-          </div>
-          {/* İzleme Listesine Ekleme, Beğeni ve Sosyal Paylaşım Butonları */}
-          <div className="flex flex-wrap gap-4 items-center justify-start mt-6">
-            <AddToWatchlistButton movieId={id} />
-            <button
-              onClick={handleLike}
-              className={`btn ${isLikedByUser ? 'btn-secondary' : 'btn-outline'} ${isAuthenticated ? '' : 'btn-disabled'}`}
-              disabled={!isAuthenticated || status === 'loading'}
-            >
-              <FiHeart className={`${isLikedByUser ? 'text-red-500' : ''}`} />
-              {platformStats?.likeCount || 0} Beğeni
-            </button>
-            <SocialShareButtons shareUrl={shareUrl} title={title} />
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-neutral via-base-300 to-base-200">
+      {/* Hero Section */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-300/50 to-base-300"></div>
+        <div className="container mx-auto px-4 pt-8 pb-16 relative z-10">
           
-         {/* Yönetmen(ler) */}
-          {crew && crew.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-bold">Yönetmen</h3>
-              <div className="flex flex-wrap gap-2">
-                {crew.map(member => (
-                  <Link key={member.person._id} to={`/persons/${member.person._id}`} className="link link-hover">
-                    {member.person.name}
-                  </Link>
-                ))}
+          {/* Main Movie Card */}
+          <div className="card lg:card-side bg-base-100/95 backdrop-blur-sm shadow-2xl border border-base-300/50 rounded-2xl overflow-hidden">
+            
+            {/* Poster Section */}
+            <figure className="lg:w-1/3 p-6 bg-gradient-to-br from-base-200 to-base-300 flex items-center justify-center">
+              <div className="relative group">
+                <img
+                  src={fullPosterUrl}
+                  alt={title}
+                  className="w-full h-auto object-cover rounded-xl shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:shadow-2xl"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
+            </figure>
+
+            {/* Content Section */}
+            <div className="card-body lg:w-2/3 p-8 lg:p-12">
+              
+              {/* Title */}
+              <div className="mb-6">
+                <h1 className="text-4xl lg:text-5xl font-bold text-base-content mb-4 leading-tight">
+                  {title}
+                </h1>
+                
+                {/* Genres */}
+                <div className="flex flex-wrap gap-2">
+                  {genres?.map((g) => (
+                    <div key={g.id} className="badge badge-primary badge-lg px-4 py-2 font-medium">
+                      {g.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Overview */}
+              <div className="mb-8">
+                <p className="text-base-content/80 text-lg leading-relaxed line-clamp-4">
+                  {overview}
+                </p>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="stat bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
+                  <div className="stat-figure text-primary">
+                    <FiStar className="w-8 h-8" />
+                  </div>
+                  <div className="stat-title text-sm">TMDB Puanı</div>
+                  <div className="stat-value text-primary text-3xl">{voteAverage?.toFixed(1)}</div>
+                  <div className="stat-desc">10 üzerinden</div>
+                </div>
+
+                <div className="stat bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-xl p-4 border border-secondary/20">
+                  <div className="stat-figure text-secondary">
+                    <FiCalendar className="w-8 h-8" />
+                  </div>
+                  <div className="stat-title text-sm">Çıkış Yılı</div>
+                  <div className="stat-value text-secondary text-3xl">
+                    {new Date(releaseDate).getFullYear()}
+                  </div>
+                </div>
+
+                <div className="stat bg-gradient-to-br from-accent/10 to-accent/5 rounded-xl p-4 border border-accent/20">
+                  <div className="stat-figure text-accent">
+                    <FiClock className="w-8 h-8" />
+                  </div>
+                  <div className="stat-title text-sm">Süre</div>
+                  <div className="stat-value text-accent text-3xl">{formatRuntime(runtime)}</div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 mb-8">
+                <AddToWatchlistButton movieId={id} />
+
+                {isAuthenticated && (
+                  <div className="dropdown dropdown-end">
+                    <button tabIndex={0} className="btn btn-info gap-2">
+                      <FiPlus className="w-4 h-4" />
+                      Listeye Ekle
+                    </button>
+                    <ul tabIndex={0} className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-52 z-50 border border-base-300">
+                      {listStatus === 'loading' ? (
+                        <li><span className="loading loading-spinner loading-sm"></span></li>
+                      ) : lists && lists.length > 0 ? (
+                        lists.map(list => (
+                          <li key={list._id}>
+                            <a onClick={() => handleAddMovieToList(list._id, id)} className="gap-2">
+                              <FiList className="w-4 h-4" />
+                              {list.title}
+                            </a>
+                          </li>
+                        ))
+                      ) : (
+                        <li><span className="text-base-content/50 p-2">Henüz liste yok</span></li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleLike}
+                  className={`btn gap-2 ${isLikedByUser ? 'btn-error' : 'btn-outline btn-error'}`}
+                  disabled={!isAuthenticated || status === 'loading'}
+                >
+                  <FiHeart className={`w-4 h-4 ${isLikedByUser ? 'fill-current' : ''}`} />
+                  {platformStats?.likeCount || 0}
+                </button>
+
+                <SocialShareButtons shareUrl={shareUrl} title={title} />
+              </div>
+
+              {/* Director */}
+              {crew && crew.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <FiUser className="w-5 h-5" />
+                    Yönetmen
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {crew.map(member => (
+                      <Link 
+                        key={member.person._id} 
+                        to={`/persons/${member.person._id}`} 
+                        className="btn btn-ghost btn-sm gap-1"
+                      >
+                        {member.person.name}
+                        <FiChevronRight className="w-3 h-3" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-          {selectedMovie.videos && selectedMovie.videos.length > 0 && (
-            <div className="mt-8">
-              <h3 className="text-xl font-bold mb-4">Fragmanlar</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {selectedMovie.videos.filter(v => v.type === 'Trailer' && v.site === 'YouTube').slice(0,2).map((video) => ( // Sadece ilk 2 fragmanı göster
-                  <div key={video.key} className="aspect-video w-full bg-black rounded-lg overflow-hidden shadow-lg">
+          </div>
+        </div>
+      </div>
+
+      {/* Content Sections */}
+      <div className="container mx-auto px-4 pb-16">
+        
+        {/* Trailers */}
+        {videos && videos.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
+              <FiPlay className="w-8 h-8 text-primary" />
+              Fragmanlar
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {videos.filter(v => v.type === 'Trailer' && v.site === 'YouTube').slice(0,2).map((video) => (
+                <div key={video.key} className="card bg-base-100 shadow-xl border border-base-300">
+                  <figure className="aspect-video">
                     <iframe
                       className="w-full h-full"
-                      src={`https://www.youtube.com/embed/${video.key}`} // Youtube embed URL'i düzeltildi
+                      src={`https://www.youtube.com/embed/${video.key}`}
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                      title={selectedMovie.title + " Fragman"}
+                      title={`${title} Fragman`}
                     ></iframe>
+                  </figure>
+                  <div className="card-body p-4">
+                    <h3 className="card-title text-lg">{video.name || 'Fragman'}</h3>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Oyuncular */}
-          {cast && cast.length > 0 && (
-              <div className="mt-6">
-                  <h3 className="text-xl font-bold mb-3">Oyuncular</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {cast.slice(0, 8).map(member => ( // İlk 8 oyuncuyu göster
-                          <Link to={`/persons/${member.person._id}`} key={member.person._id} className="text-center group">
-                              <div className="avatar">
-                                  <div className="w-24 rounded-full ring ring-primary group-hover:ring-secondary transition-all">
-                                      <img src={`https://image.tmdb.org/t/p/w200${member.person.profilePath}`} alt={member.person.name} />
-                                  </div>
-                              </div>
-                              <p className="mt-2 font-semibold group-hover:text-primary transition-colors">{member.person.name}</p>
-                              <p className="text-sm opacity-60">{member.character}</p>
-                          </Link>
-                      ))}
+        {/* Cast */}
+        {cast && cast.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
+              <FiUsers className="w-8 h-8 text-secondary" />
+              Oyuncular
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6">
+              {cast.slice(0, 16).map(member => (
+                <Link 
+                  to={`/persons/${member.person._id}`} 
+                  key={member.person._id} 
+                  className="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                >
+                  <figure className="px-4 pt-4">
+                    <div className="avatar">
+                      <div className="w-16 h-16 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                        <img 
+                          src={`https://image.tmdb.org/t/p/w200${member.person.profilePath}`} 
+                          alt={member.person.name}
+                          className="object-cover"
+                        />
+                      </div>
+                    </div>
+                  </figure>
+                  <div className="card-body p-4 text-center">
+                    <h3 className="font-semibold text-sm leading-tight">{member.person.name}</h3>
+                    <p className="text-xs text-base-content/60 mt-1">{member.character}</p>
                   </div>
-              </div>
-          )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* Yorumlar Bölümü */}
-          <div className="mt-10 p-4 md:p-8 bg-base-100 rounded-lg shadow-xl">
+        {/* Reviews */}
+        <div className="card bg-base-100 shadow-xl border border-base-300">
+          <div className="card-body p-8">
+            <h2 className="card-title text-3xl mb-8">💭 Yorumlar</h2>
             <ReviewForm movieId={id} />
             <div className="divider my-8"></div>
             <ReviewList reviews={selectedMovie?.reviews ?? []} />
           </div>
         </div>
-        </div>
+      </div>
     </div>
   );
 };

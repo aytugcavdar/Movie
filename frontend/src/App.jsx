@@ -26,20 +26,72 @@ import ListsPage from './pages/ListsPage'
 import ListDetail from './pages/ListDetail'
 import MoviesPage from './pages/MoviesPage'
 import UserManagement from './pages/admin/UserManagement'
+import { io } from 'socket.io-client'
+import { fetchNotifications } from './redux/notificationSlice'
+import ContentModeration from './pages/admin/ContentModeration'
+
 
 function App() {
  const dispatch = useDispatch();
-  const { loading: authLoading } = useSelector((state) => state.auth); 
+  const { loading: authLoading, isAuthenticated, user } = useSelector((state) => state.auth); 
+  const { items: notifications } = useSelector((state) => state.notifications); 
+
+
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     dispatch(getMe());
     document.title = 'FilmBox - Film ve Dizi İzleme Platformu';
-    document.documentElement.lang = 'tr'; 
-    document.documentElement.dir = 'ltr'; 
+    document.documentElement.lang = 'tr';
+    document.documentElement.dir = 'ltr';
   }, [dispatch]);
 
 
-    if (authLoading) {
+  useEffect(() => {
+      if (isAuthenticated && user) {
+         
+          if (!socket) {
+              const newSocket = io('http://localhost:4000', {
+                  withCredentials: true 
+              });
+              setSocket(newSocket);
+
+              newSocket.on('connect', () => {
+                  console.log('Socket.IO bağlı, ID:', newSocket.id);
+                  newSocket.emit('joinRoom', user.id); 
+              });
+
+              newSocket.on('newNotification', (newNotif) => {
+                  console.log('Yeni bildirim alındı:', newNotif);
+                  toast.info(newNotif.message, { 
+                    onClick: () => window.location.href = newNotif.link, 
+                    autoClose: 5000
+                  });
+                  dispatch(fetchNotifications()); 
+              });
+
+              newSocket.on('disconnect', () => {
+                  console.log('Socket.IO bağlantısı kesildi');
+              });
+
+              // Cleanup function
+              return () => {
+                  newSocket.disconnect();
+              };
+          } else {
+              // Eğer socket zaten bağlıysa ve kullanıcı değiştiyse odayı tekrar kat
+              if (socket.connected) {
+                  socket.emit('joinRoom', user.id);
+              }
+          }
+      } else if (socket) {
+          // Kullanıcı çıkış yaparsa bağlantıyı kes
+          socket.disconnect();
+          setSocket(null);
+      }
+  }, [isAuthenticated, user, socket, dispatch]); // socket bağımlılığını ekledik
+
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">
         <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -83,6 +135,7 @@ function App() {
         <Route path="/admin/movies" element={<MovieManagement />} /> 
         <Route path="/admin/movies/add" element={<AddMovie />} />
          <Route path="/admin/movies/edit/:id" element={<EditMovie />} />
+         <Route path="/admin/content-moderation" element={<ContentModeration />} />
          
         {/* Potentially add an edit route later: <Route path="/admin/movies/edit/:id" element={<EditMovie />} /> */}
 

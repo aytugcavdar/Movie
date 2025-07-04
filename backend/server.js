@@ -8,6 +8,8 @@ const bodyParser = require("body-parser");
 const fileUpload = require('express-fileupload');
 const errorHandler = require("./middlewares/errorHandler");
 const helmet = require("helmet");
+const { Server } = require("socket.io");
+const http = require("http");
 
 //Models
 
@@ -69,6 +71,35 @@ app.use('/api/v1/lists', listRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/statistics', statisticsRoutes);
+
+
+const server = http.createServer(app); 
+
+
+const io = new Server(server, {
+    cors: {
+        origin: process.env.CLIENT_URL, 
+        credentials: true
+    }
+});
+
+
+
+app.set('socketio', io);
+
+io.on('connection', (socket) => {
+    console.log('Bir kullanıcı bağlandı:', socket.id);
+
+
+    socket.on('joinRoom', (userId) => {
+        socket.join(userId);
+        console.log(`Kullanıcı ${userId} kendi odasına katıldı.`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Bir kullanıcı ayrıldı:', socket.id);
+    });
+});
 
 
 // Error handler middleware

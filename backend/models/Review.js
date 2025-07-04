@@ -270,6 +270,26 @@ ReviewSchema.statics.updateMovieStats = async function(movieId) {
   }
 };
 
+ReviewSchema.methods.addComment = async function(userId, content) {
+  const newComment = {
+    user: userId,
+    content: content.trim(),
+    createdAt: new Date() // Comment'a createdAt ekledik
+  };
+  this.comments.push(newComment);
+  this.commentsCount += 1;
+
+  await this.save();
+
+  // Kaydedilen yorumu döndürmeden önce populate edelim (opsiyonel ama faydalı olabilir)
+  await this.populate({
+      path: 'comments.user',
+      select: 'username avatar'
+  });
+
+  return this.comments[this.comments.length - 1]; // Son eklenen yorumu döndür
+};
+
 // Kullanıcının inceleme istatistikleri için statik metod
 ReviewSchema.statics.getUserStats = async function(userId) {
   const stats = await this.aggregate([

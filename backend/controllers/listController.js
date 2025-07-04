@@ -139,13 +139,17 @@ exports.likeList = asyncHandler(async (req, res, next) => {
     const message = isLiked ? 'Liste beğenildi.' : 'Liste beğenmekten vazgeçildi.';
 
     if (isLiked && list.user.toString() !== req.user.id.toString()) {
-        await Notification.create({
+       const notification = await Notification.create({
             user: list.user,
             sender: req.user.id,
             type: 'list_like',
             message: `${req.user.username}, "${list.title}" adlı listenizi beğendi.`,
             link: `/lists/${list._id}`
         });
+
+        
+        const io = req.app.get('socketio');
+        io.to(list.user.toString()).emit('newNotification', notification);
     }
 
     res.status(200).json({

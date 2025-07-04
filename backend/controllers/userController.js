@@ -69,13 +69,16 @@ exports.followUser = asyncHandler(async (req, res, next) => {
         currentUser.following.push(userToFollow.id);
         userToFollow.followers.push(currentUser.id);
         
-        await Notification.create({
+        const notification = await Notification.create({
             user: userToFollow._id,
             sender: currentUser._id,
             type: 'new_follower',
             message: `${currentUser.username} sizi takip etmeye başladı.`,
             link: `/users/${currentUser.username}`
+
         });
+        const io = req.app.get('socketio');
+        io.to(userToFollow._id.toString()).emit('newNotification', notification); 
     }
     
     currentUser.followingCount = currentUser.following.length;
