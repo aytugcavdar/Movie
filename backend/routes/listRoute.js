@@ -20,7 +20,7 @@ router.route('/')
     .get(protect, getLists)
     .post(protect, createList);
 
-// Tekil liste işlemleri
+
 router.route('/:id')
     .get(getList) 
     .delete(protect, deleteList)

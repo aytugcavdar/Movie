@@ -1,41 +1,35 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import { ToastContainer } from 'react-toastify'
-import 'react-toastify/dist/ReactToastify.css'
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Home from './pages/Home'
-import Auth from './pages/Auth'
-import VerifyEmail from './components/VerifyEmail'
-import Navbar from './layout/Navbar'
-import { useEffect } from 'react'
-import { getMe } from './redux/authSlice'
-import { useDispatch } from 'react-redux'
-import AdminDashboard from './pages/AdminDashboard'
-import MovieManagement from './pages/admin/MovieManagement' 
-import AddMovie from './pages/admin/AddMovie' 
-import { useSelector } from 'react-redux'
-import Profile from './pages/Profile'
-import MovieDetail from './pages/MovieDetail'
-import EditMovie from './pages/admin/EditMovie'
-import PersonDetail from './pages/PersonDetail'
-import WatchlistPage from './pages/WatchlistPage'
+import { useState, useEffect } from 'react';
+import './App.css';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import Auth from './pages/Auth';
+import VerifyEmail from './components/VerifyEmail';
+import Navbar from './layout/Navbar';
+import { getMe } from './redux/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import AdminDashboard from './pages/AdminDashboard';
+import MovieManagement from './pages/admin/MovieManagement';
+import AddMovie from './pages/admin/AddMovie';
+import Profile from './pages/Profile';
+import MovieDetail from './pages/MovieDetail';
+import EditMovie from './pages/admin/EditMovie';
+import PersonDetail from './pages/PersonDetail';
+import WatchlistPage from './pages/WatchlistPage';
 import UserProfile from './pages/UserProfile';
-import ListsPage from './pages/ListsPage'
-import ListDetail from './pages/ListDetail'
-import MoviesPage from './pages/MoviesPage'
-import UserManagement from './pages/admin/UserManagement'
-import { io } from 'socket.io-client'
-import { fetchNotifications } from './redux/notificationSlice'
-import ContentModeration from './pages/admin/ContentModeration'
+import ListsPage from './pages/ListsPage';
+import ListDetail from './pages/ListDetail';
+import MoviesPage from './pages/MoviesPage';
+import UserManagement from './pages/admin/UserManagement';
+import { io } from 'socket.io-client';
+import { fetchNotifications } from './redux/notificationSlice';
+import ContentModeration from './pages/admin/ContentModeration';
 
 
 function App() {
- const dispatch = useDispatch();
-  const { loading: authLoading, isAuthenticated, user } = useSelector((state) => state.auth); 
-  const { items: notifications } = useSelector((state) => state.notifications); 
-
+  const dispatch = useDispatch();
+  const { loading: authLoading, isAuthenticated, user } = useSelector((state) => state.auth);
 
   const [socket, setSocket] = useState(null);
 
@@ -48,48 +42,59 @@ function App() {
 
 
   useEffect(() => {
-      if (isAuthenticated && user) {
-         
-          if (!socket) {
-              const newSocket = io('http://localhost:4000', {
-                  withCredentials: true 
-              });
-              setSocket(newSocket);
+    // Kullanıcı doğrulandıysa ve user objesi ve ID'si mevcutsa
+    if (isAuthenticated && user && user.id) {
+      // Eğer socket henüz oluşturulmadıysa veya bağlantısı kesilmişse yeni bir socket oluştur
+      if (!socket || !socket.connected) {
+        console.log('Frontend: Socket oluşturuluyor veya yeniden bağlanılıyor...');
+        const newSocket = io('http://localhost:5173', {
+          withCredentials: true // Cookie'lerin gönderilmesini sağlar
+        });
+        setSocket(newSocket);
 
-              newSocket.on('connect', () => {
-                  console.log('Socket.IO bağlı, ID:', newSocket.id);
-                  newSocket.emit('joinRoom', user.id); 
-              });
+        newSocket.on('connect', () => {
+          console.log('Frontend: Socket.IO bağlı, ID:', newSocket.id);
+          console.log('Frontend: Joining room with user ID:', user.id);
+          newSocket.emit('joinRoom', user.id);
+        });
 
-              newSocket.on('newNotification', (newNotif) => {
-                  console.log('Yeni bildirim alındı:', newNotif);
-                  toast.info(newNotif.message, { 
-                    onClick: () => window.location.href = newNotif.link, 
-                    autoClose: 5000
-                  });
-                  dispatch(fetchNotifications()); 
-              });
+        newSocket.on('newNotification', (newNotif) => {
+          console.log('Frontend: Yeni bildirim alındı:', newNotif);
+          toast.info(newNotif.message, {
+            onClick: () => window.location.href = newNotif.link,
+            autoClose: 5000
+          });
+          dispatch(fetchNotifications()); // Bildirimleri yenilemek için
+        });
 
-              newSocket.on('disconnect', () => {
-                  console.log('Socket.IO bağlantısı kesildi');
-              });
+        newSocket.on('disconnect', () => {
+          console.log('Frontend: Socket.IO bağlantısı kesildi');
+        });
 
-              // Cleanup function
-              return () => {
-                  newSocket.disconnect();
-              };
-          } else {
-              // Eğer socket zaten bağlıysa ve kullanıcı değiştiyse odayı tekrar kat
-              if (socket.connected) {
-                  socket.emit('joinRoom', user.id);
-              }
-          }
-      } else if (socket) {
-          // Kullanıcı çıkış yaparsa bağlantıyı kes
-          socket.disconnect();
-          setSocket(null);
+        // Cleanup fonksiyonu: Component unmount edildiğinde veya bağımlılıklar değiştiğinde socket'i kapat
+        return () => {
+          console.log('Frontend: Socket cleanup - disconnecting old socket.');
+          newSocket.disconnect();
+          setSocket(null); // Socket state'ini temizle
+        };
+      } else {
+        // Eğer socket zaten bağlıysa, kullanıcının odasına tekrar katılmayı denemek bir güvenlik önlemidir.
+        // Bu genellikle 'connect' olayında zaten yapılır, ancak emin olmak için buraya eklenebilir.
+        // Ancak bu durum 'socket' state'i değişmediği sürece bu 'useEffect'i tetiklemez.
+        // Anahtar nokta, socket'in bağımlılık dizisinde olmamasıdır.
+        if (socket.connected) {
+            console.log('Frontend: Socket already connected, ensuring correct room for user ID:', user.id);
+            socket.emit('joinRoom', user.id);
+        }
       }
-  }, [isAuthenticated, user, socket, dispatch]); // socket bağımlılığını ekledik
+    } else if (socket && socket.connected) {
+      // Kullanıcı çıkış yaparsa veya kimliği doğrulanmazsa mevcut socket bağlantısını kes
+      console.log('Frontend: User logged out or unauthorized, disconnecting socket.');
+      socket.disconnect();
+      setSocket(null);
+    }
+  }, [isAuthenticated, user, dispatch]); // BAĞIMLILIK DİZİSİNDE 'socket' YOK!
+
 
   if (authLoading) {
     return (
@@ -114,34 +119,32 @@ function App() {
         pauseOnHover
         theme="colored"
       />
-      
+
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path='/verify-email/:verifytoken' element={<VerifyEmail />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/movies" element={<MoviesPage />} />
-         <Route path="/movies/:id" element={<MovieDetail />} /> 
+        <Route path="/movies/:id" element={<MovieDetail />} />
         <Route path="/persons/:id" element={<PersonDetail />} />
         <Route path="/users/:username" element={<UserProfile />} />
-        {/* Catch-all route for 404 */}
-        <Route path="*" element={<div className="text-center p-10">404 - Sayfa Bulunamadı</div>} />
         <Route path="/watchlists" element={<WatchlistPage />} />
         <Route path="/lists" element={<ListsPage />} />
         <Route path="/lists/:id" element={<ListDetail />} />
         {/* Admin Routes */}
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/movies" element={<MovieManagement />} /> 
+        <Route path="/admin/movies" element={<MovieManagement />} />
         <Route path="/admin/movies/add" element={<AddMovie />} />
-         <Route path="/admin/movies/edit/:id" element={<EditMovie />} />
-         <Route path="/admin/content-moderation" element={<ContentModeration />} />
-         
-        {/* Potentially add an edit route later: <Route path="/admin/movies/edit/:id" element={<EditMovie />} /> */}
+        <Route path="/admin/movies/edit/:id" element={<EditMovie />} />
+        <Route path="/admin/content-moderation" element={<ContentModeration />} />
 
+        {/* Catch-all route for 404 */}
+        <Route path="*" element={<div className="text-center p-10">404 - Sayfa Bulunamadı</div>} />
       </Routes>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -11,7 +11,7 @@ const ListsPage = () => {
     const navigate = useNavigate();
     const { lists, status } = useSelector(state => state.list);
     const { isAuthenticated, user: currentUser } = useSelector(state => state.auth); 
-
+    console.log("ListsPage component rendered",lists);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [isPublic, setIsPublic] = useState(true);

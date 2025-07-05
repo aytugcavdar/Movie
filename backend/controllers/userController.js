@@ -77,6 +77,7 @@ exports.followUser = asyncHandler(async (req, res, next) => {
             link: `/users/${currentUser.username}`
 
         });
+        console.log('Bildirim gönderiliyor:', notification)
         const io = req.app.get('socketio');
         io.to(userToFollow._id.toString()).emit('newNotification', notification); 
     }
