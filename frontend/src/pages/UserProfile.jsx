@@ -4,10 +4,11 @@ import React, { useEffect,useState  } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchUserProfile,followUser  } from '../redux/userSlice'; 
-import { FiUser, FiFilm, FiList, FiStar, FiUserPlus, FiUserCheck } from 'react-icons/fi';
+import { FiUser, FiFilm, FiList, FiStar, FiUserPlus, FiUserCheck, FiEye } from 'react-icons/fi'; // FiEye eklendi
 import { toast } from 'react-toastify';
 import { fetchStatistics } from '../redux/statisticsSlice'; 
 import { FiBarChart2 } from 'react-icons/fi';
+import MovieCard from '../components/MovieCard'; // MovieCard import edildi
 
 const UserProfile = () => {
     const { username } = useParams();
@@ -68,7 +69,7 @@ const UserProfile = () => {
         return <div className="text-center p-10">Kullanıcı bulunamadı.</div>;
     }
 
-    const { user, reviews, watchlists } = profileData;
+    const { user, reviews, watchlists, watchedMovies } = profileData; // watchedMovies'i çektik
 
     return (
         <div className="min-h-screen bg-base-200 p-4 md:p-8">
@@ -120,6 +121,10 @@ const UserProfile = () => {
                                             <div className="stat">
                                                 <div className="stat-title">Alınan Beğeni</div>
                                                 <div className="stat-value text-accent">{statsData.stats.totalLikesReceived || 0}</div>
+                                            </div>
+                                            <div className="stat"> {/* İzlenen Film Sayısı */}
+                                                <div className="stat-title">İzlenen Film</div>
+                                                <div className="stat-value text-info">{watchedMovies?.length || 0}</div>
                                             </div>
                                         </div>
 
@@ -182,7 +187,7 @@ const UserProfile = () => {
                         ) : <div className="text-center p-6 bg-base-100 rounded-lg shadow-inner"><p>Henüz yorum yok.</p></div>}
                     </div>
 
-                    {/* Sağ Sütun: Listeler */}
+                    {/* Sağ Sütun: Listeler ve İzlenen Filmler */}
                     <div className="space-y-6">
                         <h3 className="text-2xl font-bold flex items-center gap-2"><FiList /> İzleme Listeleri</h3>
                         {watchlists && watchlists.length > 0 ? (
@@ -194,7 +199,22 @@ const UserProfile = () => {
                                     </div>
                                 </div>
                             ))
-                        ) : <div className="text-center p-6 bg-base-100 rounded-lg shadow-inner"><p>Henüz herkese açık liste yok.</p></div>}
+                        ) : <div className="text-center p-6 bg-base-100 rounded-lg shadow-inner"><p>Henüz herkese açık izleme listesi yok.</p></div>}
+                        
+                        <div className="divider"></div> {/* Ayırıcı */}
+
+                        <h3 className="text-2xl font-bold flex items-center gap-2"><FiEye /> İzlenen Filmler</h3>
+                        {watchedMovies && watchedMovies.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-4">
+                                {watchedMovies.slice(0, 6).map(item => ( // İlk 6 filmi göster
+                                    <MovieCard key={item.movie._id} movie={item.movie} className="col-span-1" />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center p-6 bg-base-100 rounded-lg shadow-inner">
+                                <p>Henüz izlenen film yok.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

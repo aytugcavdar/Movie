@@ -196,6 +196,29 @@ export const likeMovie = createAsyncThunk(
     }
 );
 
+// YENİ THUNK: reportReview
+export const reportReview = createAsyncThunk(
+    'movies/reportReview',
+    async (reviewId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`http://localhost:4000/api/v1/reviews/${reviewId}/report`, { // Reviews API'sine doğrudan istek
+                method: 'POST',
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                toast.error(data.message || 'Yorum raporlanırken bir hata oluştu!');
+                return rejectWithValue(data.message);
+            }
+            toast.success(data.message);
+            return reviewId; // Başarılı olursa raporlanan yorumun ID'sini döndür
+        } catch (error) {
+            toast.error(error.message || 'Ağ hatası oluştu!');
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
 
 const movieSlice = createSlice({
     name: 'movies',
@@ -332,6 +355,22 @@ const movieSlice = createSlice({
             })
             .addCase(likeMovie.rejected, (state, action) => {
                 state.error = action.payload; 
+            })
+            // reportReview için extraReducer
+            .addCase(reportReview.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(reportReview.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Raporlanan yorumu listeden çıkarmak yerine, sadece durumunu güncelleyebiliriz
+                // Veya moderasyon paneline taşındığı için ana listeden kaldırabiliriz.
+                // Şimdilik sadece toast mesajı ile başarılı olduğunu belirtiyoruz.
+                state.error = null;
+            })
+            .addCase(reportReview.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
             });
     },
 });

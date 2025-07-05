@@ -1,5 +1,3 @@
-
-
 const express = require('express');
 const {
     getReviewsForMovie,
@@ -7,7 +5,8 @@ const {
     updateReview,
     deleteReview,
     likeReview,
-    addCommentToReview
+    addCommentToReview,
+    reportReview // reportReview fonksiyonunu import ettik
 } = require('../controllers/reviewController');
 
 const { protect, authorize } = require('../middlewares/authMiddeleware');
@@ -25,5 +24,6 @@ router.route('/:id')
 
 router.route('/:id/like').put(protect, likeReview);
 router.route('/:id/comments').post(protect, addCommentToReview);
+router.route('/:id/report').post(protect, reportReview); // Yeni raporlama rotası
 
 module.exports = router;

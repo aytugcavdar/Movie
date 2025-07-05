@@ -1,4 +1,3 @@
-
 const express = require('express');
 const {
     getLists,
@@ -8,7 +7,8 @@ const {
     removeMovieFromList,
     deleteList,
     updateList,
-    likeList
+    likeList,
+    reportList // reportList fonksiyonunu import ettik
 } = require('../controllers/listController');
 
 const { protect } = require('../middlewares/authMiddeleware');
@@ -35,5 +35,7 @@ router.route('/:id/movies/:movieId')
 
 router.route('/:id/like')
     .put(protect, likeList);
+
+router.route('/:id/report').post(protect, reportList);
 
 module.exports = router;

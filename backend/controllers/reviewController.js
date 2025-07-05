@@ -1,4 +1,4 @@
-// backend/controllers/reviewController.js
+
 
 const Review = require('../models/Review');
 const Movie = require('../models/Movie');
@@ -122,7 +122,7 @@ exports.likeReview = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/reviews/:id/comments
 // @access  Private
 exports.addCommentToReview = asyncHandler(async (req, res, next) => {
-    const review = await Review.findById(req.params.id);
+    const review = await Review.findById(req.params.id).populate('user', 'username avatar'); 
 
     if (!review) {
         return next(new ErrorResponse(`ID'si ${req.params.id} olan inceleme bulunamadı`, 404));
@@ -134,10 +134,57 @@ exports.addCommentToReview = asyncHandler(async (req, res, next) => {
     }
 
     
-    const newComment = await review.addComment(req.user.id, content);
+    const newComment = await review.addComment(req.user.id, content); 
+
+  
+    if (review.user._id.toString() !== req.user.id.toString()) {
+        const notification = await Notification.create({
+            user: review.user._id, 
+            sender: req.user.id, 
+            type: 'comment_on_review',
+            message: `${req.user.username} yorumunuza yanıt verdi: "${content.substring(0, 50)}..."`,
+            link: `/movies/${review.movie._id}` 
+        });
+
+        // Socket.IO ile bildirim gönder
+        const io = req.app.get('socketio');
+        io.to(review.user._id.toString()).emit('newNotification', notification);
+    }
 
     res.status(201).json({
         success: true,
         data: newComment
+    });
+});
+
+// @desc    Bir incelemeyi raporla
+// @route   POST /api/v1/reviews/:id/report
+// @access  Private
+exports.reportReview = asyncHandler(async (req, res, next) => {
+    const review = await Review.findById(req.params.id);
+
+    if (!review) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan inceleme bulunamadı`, 404));
+    }
+
+    // Kullanıcının kendi yorumunu raporlamasını engelle
+    if (review.user.toString() === req.user.id.toString()) {
+        return next(new ErrorResponse('Kendi yorumunuzu raporlayamazsınız', 400));
+    }
+
+    // Zaten raporlanmışsa ve moderasyon bekliyorsa tekrar raporlamayı engelle
+    if (review.isReported && review.moderationStatus === 'pending') {
+        return next(new ErrorResponse('Bu yorum zaten raporlanmış ve moderasyon bekliyor', 400));
+    }
+
+    review.isReported = true;
+    review.reportCount = (review.reportCount || 0) + 1;
+    review.moderationStatus = 'pending'; // Raporlandığında durumu 'pending' yap
+
+    await review.save({ validateBeforeSave: false }); // Sadece bu alanları güncellediğimiz için validasyonu atlayabiliriz
+
+    res.status(200).json({
+        success: true,
+        message: 'Yorum başarıyla raporlandı ve moderasyon için gönderildi.'
     });
 });

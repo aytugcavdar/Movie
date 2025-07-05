@@ -23,7 +23,7 @@ import ListDetail from './pages/ListDetail';
 import MoviesPage from './pages/MoviesPage';
 import UserManagement from './pages/admin/UserManagement';
 import { io } from 'socket.io-client';
-import { fetchNotifications } from './redux/notificationSlice';
+import { fetchNotifications, addNotification } from './redux/notificationSlice'; // addNotification eylemini import ettik
 import ContentModeration from './pages/admin/ContentModeration';
 
 
@@ -47,7 +47,8 @@ function App() {
       // Eğer socket henüz oluşturulmadıysa veya bağlantısı kesilmişse yeni bir socket oluştur
       if (!socket || !socket.connected) {
         console.log('Frontend: Socket oluşturuluyor veya yeniden bağlanılıyor...');
-        const newSocket = io('http://localhost:5173', {
+        // Socket.IO sunucusunun doğru URL'sine bağlanıyoruz
+        const newSocket = io('http://localhost:4000', { // BURASI DÜZELTİLDİ
           withCredentials: true // Cookie'lerin gönderilmesini sağlar
         });
         setSocket(newSocket);
@@ -64,7 +65,10 @@ function App() {
             onClick: () => window.location.href = newNotif.link,
             autoClose: 5000
           });
-          dispatch(fetchNotifications()); // Bildirimleri yenilemek için
+          // Yeni bildirimi anında Redux durumuna ekleyin
+          dispatch(addNotification(newNotif)); // BURASI DÜZELTİLDİ
+          // Tüm bildirimleri yeniden çekmeye gerek kalmadı, ancak isterseniz belirli senaryolar için tutulabilir.
+          // dispatch(fetchNotifications()); 
         });
 
         newSocket.on('disconnect', () => {

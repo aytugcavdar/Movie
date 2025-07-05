@@ -190,16 +190,10 @@ const Home = () => {
           <div className="mt-8 flex justify-center gap-4">
             <button 
               className="btn btn-primary btn-lg gap-2"
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/auth')} // Auth sayfasına yönlendir
             >
               <FiUser />
-              Hesap Oluştur
-            </button>
-            <button 
-              className="btn btn-outline btn-lg gap-2"
-              onClick={() => navigate('/login')}
-            >
-              Giriş Yap
+              Giriş Yap / Kayıt Ol
             </button>
           </div>
         )}
@@ -270,12 +264,17 @@ const Home = () => {
                                   <FiFilm className="inline w-4 h-4 mr-1" />
                                   film incelemesi yaptı
                                 </>
-                              ) : (
+                              ) : item.type === 'list' ? ( // List tipi için
                                 <>
                                   <FiList className="inline w-4 h-4 mr-1" />
                                   yeni liste oluşturdu
                                 </>
-                              )}
+                              ) : item.type === 'watched' ? ( // Watched tipi için
+                                <>
+                                  <FiEye className="inline w-4 h-4 mr-1" />
+                                  film izledi
+                                </>
+                              ) : null}
                             </span>
                           </div>
                           
@@ -285,11 +284,18 @@ const Home = () => {
                                 <p className="font-semibold text-base-content mb-1">
                                   "{item.movie?.title}" filmi hakkında:
                                 </p>
+                                {/* Yorumun puanını burada gösteriyoruz */}
+                                {item.rating && (
+                                    <div className="flex items-center gap-1 text-sm text-yellow-500 mb-1">
+                                        <FiStar className="inline w-4 h-4" />
+                                        <span>{item.rating} / 5</span>
+                                    </div>
+                                )}
                                 <p className="text-base-content/80 italic">
-                                  "{item.content?.substring(0, 120)}..."
+                                  "{item.content?.substring(0, 120)}{item.content?.length > 120 ? '...' : ''}"
                                 </p>
                               </div>
-                            ) : (
+                            ) : item.type === 'list' ? ( // List tipi içeriği
                               <div>
                                 <p className="font-semibold text-base-content mb-1">
                                   📋 {item.title}
@@ -298,12 +304,27 @@ const Home = () => {
                                   {item.description || 'Açıklama bulunmuyor.'}
                                 </p>
                               </div>
-                            )}
+                            ) : item.type === 'watched' ? ( // Watched tipi içeriği
+                                <div>
+                                    <p className="font-semibold text-base-content mb-1">
+                                        🎬 "{item.movie?.title}" filmini izledi
+                                    </p>
+                                    {item.rating && (
+                                        <div className="flex items-center gap-1 text-sm text-yellow-500 mb-1">
+                                            <FiStar className="inline w-4 h-4" />
+                                            <span>{item.rating} / 5</span>
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-base-content/60">
+                                        İzlenme Tarihi: {new Date(item.watchedAt).toLocaleDateString('tr-TR')}
+                                    </p>
+                                </div>
+                            ) : null}
                           </div>
 
                           <div className="flex items-center justify-between">
                             <div className="text-xs text-base-content/50">
-                              {new Date(item.createdAt).toLocaleString('tr-TR')}
+                              {new Date(item.createdAt || item.watchedAt).toLocaleString('tr-TR')}
                             </div>
                             <div className="flex gap-2">
                               {item.type === 'review' && (
@@ -322,6 +343,15 @@ const Home = () => {
                                 >
                                   <FiList className="w-3 h-3" />
                                   Listeyi Gör
+                                </Link>
+                              )}
+                              {item.type === 'watched' && (
+                                <Link 
+                                  to={`/movies/${item.movie._id}`} 
+                                  className="btn btn-sm btn-info btn-outline gap-1"
+                                >
+                                  <FiFilm className="w-3 h-3" />
+                                  Filmi Gör
                                 </Link>
                               )}
                             </div>

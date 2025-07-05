@@ -1,15 +1,14 @@
-
-
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchMovieById, likeMovie } from "../redux/movieSlice";
+import { markMovieAsWatched } from "../redux/userSlice"; // markMovieAsWatched import edildi
 import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
 import AddToWatchlistButton from '../components/AddToWatchlistButton';
 import { Link } from "react-router-dom";
 import SocialShareButtons from "../components/SocialShareButtons";
-import { FiHeart, FiCalendar, FiClock, FiStar, FiChevronRight, FiPlus, FiList, FiPlay, FiUsers, FiUser } from 'react-icons/fi'; 
+import { FiHeart, FiCalendar, FiClock, FiStar, FiChevronRight, FiPlus, FiList, FiPlay, FiUsers, FiUser, FiCheckCircle } from 'react-icons/fi'; // FiCheckCircle eklendi
 import { toast } from 'react-toastify';
 import { fetchLists, addMovieToList } from '../redux/listSlice'; 
 
@@ -17,8 +16,16 @@ const MovieDetail = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { selectedMovie, status, error } = useSelector((state) => state.movie);
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user: currentUser } = useSelector((state) => state.auth);
   const { lists, status: listStatus } = useSelector(state => state.list);
+  const { profiles } = useSelector(state => state.user); // userSlice'tan profilleri al
+
+  // Mevcut kullanıcının bu filmi izleyip izlemediğini kontrol et
+  const currentUserProfile = profiles[currentUser?.username];
+  const isWatchedByUser = currentUserProfile?.watchedMovies?.some(
+    (item) => item.movie?._id === id
+  );
+
 
   useEffect(() => {
     if (id) {
@@ -43,6 +50,15 @@ const MovieDetail = () => {
       } catch (err) {
           toast.error(err || "Film listeye eklenirken bir hata oluştu!");
       }
+  };
+
+  const handleMarkAsWatched = async () => {
+    if (!isAuthenticated) {
+        toast.error("Filmi izlendi olarak işaretlemek için giriş yapmalısınız.");
+        return;
+    }
+    // İzlendi olarak işaretlerken puan verme opsiyonu da eklenebilir
+    dispatch(markMovieAsWatched({ movieId: id }));
   };
 
   if (status === "loading")
@@ -117,7 +133,7 @@ const MovieDetail = () => {
                 <img
                   src={fullPosterUrl}
                   alt={title}
-                  className="w-full h-auto object-cover rounded-xl shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:shadow-2xl"
+                  className="w-full h-full object-cover rounded-xl shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:shadow-2xl"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
@@ -217,6 +233,18 @@ const MovieDetail = () => {
                   {platformStats?.likeCount || 0}
                 </button>
 
+                {/* YENİ EKLENDİ: İzlenenler Butonu */}
+                {isAuthenticated && (
+                    <button
+                        onClick={handleMarkAsWatched}
+                        className={`btn gap-2 ${isWatchedByUser ? 'btn-success' : 'btn-outline btn-success'}`}
+                        disabled={status === 'loading'}
+                    >
+                        <FiCheckCircle className={`w-4 h-4 ${isWatchedByUser ? 'fill-current' : ''}`} />
+                        {isWatchedByUser ? 'İzlendi' : 'İzlendi Olarak İşaretle'}
+                    </button>
+                )}
+
                 <SocialShareButtons shareUrl={shareUrl} title={title} />
               </div>
 
@@ -298,7 +326,6 @@ const MovieDetail = () => {
                         <img 
                           src={`https://image.tmdb.org/t/p/w200${member.person.profilePath}`} 
                           alt={member.person.name}
-                          className="object-cover"
                         />
                       </div>
                     </div>

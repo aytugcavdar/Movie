@@ -49,10 +49,24 @@ export const markAllNotificationsAsRead = createAsyncThunk(
     }
 );
 
+
 const notificationSlice = createSlice({
     name: 'notifications',
     initialState,
-    reducers: {},
+     reducers: {
+        // Yeni reducer: Anlık bildirim ekleme
+        addNotification: (state, action) => {
+            const newNotif = action.payload;
+            state.items.unshift(newNotif); // Yeni bildirimi listenin başına ekle
+            if (!newNotif.isRead) {
+                state.unreadCount += 1; // Okunmadıysa okunmamış sayısını artır
+            }
+            // İsteğe bağlı: Bellek kullanımını kontrol altında tutmak için eski bildirimleri kaldırabilirsiniz
+            // if (state.items.length > 50) {
+            //     state.items.pop(); 
+            // }
+        },
+        },
     extraReducers: (builder) => {
         builder
             .addCase(fetchNotifications.pending, (state) => {
@@ -83,5 +97,6 @@ const notificationSlice = createSlice({
             });
     }
 });
+export const { addNotification, markNotificationAsRead } = notificationSlice.actions; 
 
 export default notificationSlice.reducer;

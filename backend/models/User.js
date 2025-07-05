@@ -101,7 +101,25 @@ const UserSchema = new mongoose.Schema({
   followingCount: {
     type: Number,
     default: 0
-  }
+  },
+  // YENİ EKLENDİ: İzlenen filmler
+  watchedMovies: [{
+    movie: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Movie',
+      required: true
+    },
+    watchedAt: {
+      type: Date,
+      default: Date.now
+    },
+    // Kullanıcının bu filme verdiği puanı da burada tutabiliriz (isteğe bağlı)
+    rating: {
+      type: Number,
+      min: 0.5,
+      max: 5
+    }
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

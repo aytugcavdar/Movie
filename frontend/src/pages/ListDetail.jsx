@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchListById, removeMovieFromList, likeList, updateList, deleteList } from '../redux/listSlice'; // updateList ve deleteList eklendi
+import { fetchListById, removeMovieFromList, likeList, updateList, deleteList, reportList } from '../redux/listSlice'; // reportList eklendi
 import MovieCard from '../components/MovieCard';
-import { FiArrowLeft, FiTrash2, FiHeart, FiEdit, FiEye, FiLock, FiAlertTriangle } from 'react-icons/fi'; // FiEdit, FiEye, FiLock, FiAlertTriangle eklendi
+import { FiArrowLeft, FiTrash2, FiHeart, FiEdit, FiEye, FiLock, FiAlertTriangle, FiFlag } from 'react-icons/fi'; // FiFlag eklendi
 import { toast } from 'react-toastify';
 
 const ListDetail = () => {
@@ -31,6 +30,30 @@ const ListDetail = () => {
         }
         dispatch(likeList(id));
     };
+
+    // Raporlama fonksiyonu
+    const handleReportList = () => {
+        if (!isAuthenticated) {
+            toast.error("Listeyi raporlamak için giriş yapmalısınız.");
+            return;
+        }
+        // Kendi listesini raporlamasını engelle
+        if (currentUser && selectedList.user === currentUser.id) {
+            toast.warn("Kendi listenizi raporlayamazsınız.");
+            return;
+        }
+        if (window.confirm("Bu listeyi raporlamak istediğinizden emin misiniz?")) {
+            dispatch(reportList(id))
+                .unwrap()
+                .then(() => {
+                    // Başarılı toast mesajı thunk içinde zaten gösteriliyor.
+                })
+                .catch(err => {
+                    // Hata toast mesajı thunk içinde zaten gösteriliyor.
+                });
+        }
+    };
+
 
     useEffect(() => {
         dispatch(fetchListById(id));
@@ -113,6 +136,9 @@ const ListDetail = () => {
 
     // Liste sahibinin bu listeyi düzenleyip düzenleyemeyeceğini kontrol et
     const canEdit = currentUser && currentUser.id === selectedList.user;
+    // Kendi listesini raporlayamaz
+    const canReport = isAuthenticated && currentUser && selectedList.user !== currentUser.id;
+
 
     return (
         <div className="min-h-screen bg-base-200 p-8">
@@ -152,6 +178,15 @@ const ListDetail = () => {
                                     title="Listeyi Sil"
                                 >
                                     <FiTrash2 size={18} />
+                                </button>
+                            )}
+                            {canReport && ( // Raporla butonu
+                                <button
+                                    className="btn btn-ghost btn-sm btn-circle text-warning"
+                                    onClick={handleReportList}
+                                    title="Listeyi Raporla"
+                                >
+                                    <FiFlag size={18} />
                                 </button>
                             )}
                         </div>

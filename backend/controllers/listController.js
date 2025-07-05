@@ -1,4 +1,3 @@
-
 const List = require('../models/List');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
@@ -115,29 +114,6 @@ exports.likeList = asyncHandler(async (req, res, next) => {
     
     const message = isLiked ? 'Liste beğenildi.' : 'Liste beğenmekten vazgeçildi.';
 
-    res.status(200).json({
-        success: true,
-        data: {
-            likesCount: list.likesCount
-        },
-        message
-    });
-});
-// @desc    Bir listeyi beğen/beğenmekten vazgeç
-// @route   PUT /api/v1/lists/:id/like
-// @access  Private
-exports.likeList = asyncHandler(async (req, res, next) => {
-    const list = await List.findById(req.params.id);
-
-    if (!list) {
-        return next(new ErrorResponse(`ID'si ${req.params.id} olan liste bulunamadı`, 404));
-    }
-
-    // Modelde tanımladığımız toggleLike metodunu kullanıyoruz
-    const isLiked = await list.toggleLike(req.user.id);
-    
-    const message = isLiked ? 'Liste beğenildi.' : 'Liste beğenmekten vazgeçildi.';
-
     if (isLiked && list.user.toString() !== req.user.id.toString()) {
        const notification = await Notification.create({
             user: list.user,
@@ -188,5 +164,37 @@ exports.updateList = asyncHandler(async (req, res, next) => {
     res.status(200).json({
         success: true,
         data: list
+    });
+});
+
+// @desc    Bir listeyi raporla
+// @route   POST /api/v1/lists/:id/report
+// @access  Private
+exports.reportList = asyncHandler(async (req, res, next) => {
+    const list = await List.findById(req.params.id);
+
+    if (!list) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan liste bulunamadı`, 404));
+    }
+
+    // Kullanıcının kendi listesini raporlamasını engelle
+    if (list.user.toString() === req.user.id.toString()) {
+        return next(new ErrorResponse('Kendi listenizi raporlayamazsınız', 400));
+    }
+
+    // Zaten raporlanmışsa ve moderasyon bekliyorsa tekrar raporlamayı engelle
+    if (list.isReported && list.moderationStatus === 'pending') {
+        return next(new ErrorResponse('Bu liste zaten raporlanmış ve moderasyon bekliyor', 400));
+    }
+
+    list.isReported = true;
+    list.reportCount = (list.reportCount || 0) + 1;
+    list.moderationStatus = 'pending'; // Raporlandığında durumu 'pending' yap
+
+    await list.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+        success: true,
+        message: 'Liste başarıyla raporlandı ve moderasyon için gönderildi.'
     });
 });

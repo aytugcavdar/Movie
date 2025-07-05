@@ -129,7 +129,7 @@ const MovieSchema = new mongoose.Schema({
       default: 0,
       min: [0, 'İzleme listesi sayısı negatif olamaz']
     },
-    watchedCount: {
+    watchedCount: { // İzlenme sayısı
       type: Number,
       default: 0,
       min: [0, 'İzlendi sayısı negatif olamaz']
@@ -246,7 +246,7 @@ MovieSchema.virtual('year').get(function() {
 
 // Tür isimlerini array olarak döndür
 MovieSchema.virtual('genreNames').get(function() {
-  return this.genres.map(genre => genre.name);
+  return this.genres && Array.isArray(this.genres) ? this.genres.map(genre => genre.name) : [];
 });
 
 // Ortalama puanı güncelleme metodu
@@ -302,6 +302,16 @@ MovieSchema.methods.toggleLike = async function(userId) {
   
   await this.save();
   return !existingLike; 
+};
+
+
+MovieSchema.methods.toggleWatched = async function(isAdded) {
+    if (isAdded) {
+        this.platformStats.watchedCount = (this.platformStats.watchedCount || 0) + 1;
+    } else {
+        this.platformStats.watchedCount = Math.max(0, (this.platformStats.watchedCount || 0) - 1);
+    }
+    await this.save({ validateBeforeSave: false });
 };
 
 module.exports = mongoose.model('Movie', MovieSchema);

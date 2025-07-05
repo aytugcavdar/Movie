@@ -1,5 +1,6 @@
 // frontend/src/redux/userSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { toast } from 'react-toastify';
 
 const initialState = {
     // Çekilen profilleri kullanıcı adına göre önbelleğe alacağız
@@ -51,6 +52,38 @@ export const followUser = createAsyncThunk(
     }
 );
 
+// YENİ THUNK: markMovieAsWatched
+export const markMovieAsWatched = createAsyncThunk(
+    'user/markMovieAsWatched',
+    async ({ movieId, rating = null }, { rejectWithValue, getState }) => {
+        const { auth } = getState();
+        if (!auth.isAuthenticated) {
+            return rejectWithValue('Bu işlem için giriş yapmalısınız.');
+        }
+        try {
+            const response = await fetch(`${USER_API_URL}/watched/${movieId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rating }),
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                toast.error(data.message || 'Film izlendi olarak işaretlenemedi!');
+                return rejectWithValue(data.message);
+            }
+            toast.success(data.message);
+            // Güncel kullanıcı profilini yeniden çekmek için
+            // veya sadece local state'i güncellemek için daha detaylı payload döndürülebilir
+            return { movieId, ...data.data, currentUserId: auth.user.id }; 
+        } catch (error) {
+            toast.error(error.message || 'Ağ hatası oluştu!');
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+
 const userSlice = createSlice({
     name: 'user',
     initialState,
@@ -77,14 +110,36 @@ const userSlice = createSlice({
                 if (username && state.profiles[username]) {
                     state.profiles[username].user.followersCount = data.followersCount;
                     
-                    if (state.profiles[auth.user.username]) {
-                        state.profiles[auth.user.username].user.followingCount = data.followingCount;
-                    }
+                    // Mevcut kullanıcının takip ettikleri sayısını da güncellemek için
+                    // auth slice'a erişim olmadığı için bu kısım authSlice içinde yapılmalı
+                    // veya buradan bir action dispatch edilmeli. Şimdilik sadece takip edilenin sayısını güncelliyoruz.
                 }
             })
             .addCase(followUser.rejected, (state, action) => {
                 
                 console.error("Takip hatası:", action.payload);
+            })
+            // markMovieAsWatched için extraReducer
+            .addCase(markMovieAsWatched.fulfilled, (state, action) => {
+                const { movieId, isWatched, watchedMoviesCount, currentUserId } = action.payload;
+                // Kendi profilimizdeki watchedMovies listesini güncelliyoruz
+                const currentUserProfileKey = Object.keys(state.profiles).find(key => state.profiles[key].user._id === currentUserId);
+                if (currentUserProfileKey && state.profiles[currentUserProfileKey]) {
+                    if (isWatched) {
+                        // Yeni eklenen filmi ekle (sadece ID ve watchedAt, tam film objesi değil)
+                        state.profiles[currentUserProfileKey].watchedMovies.push({ movie: movieId, watchedAt: new Date() });
+                    } else {
+                        // Çıkarılan filmi filtrele
+                        state.profiles[currentUserProfileKey].watchedMovies = state.profiles[currentUserProfileKey].watchedMovies.filter(
+                            item => item.movie._id.toString() !== movieId
+                        );
+                    }
+                }
+                // Ayrıca, eğer görüntülenen profil mevcut kullanıcının profili ise, o profilin de güncellendiğinden emin olun.
+                // Bu, fetchUserProfile tekrar çağrıldığında tam verilerle güncellenecektir.
+            })
+            .addCase(markMovieAsWatched.rejected, (state, action) => {
+                state.error = action.payload;
             });
     }
 });

@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from 'react-toastify';
 
@@ -110,7 +109,7 @@ export const deleteList = createAsyncThunk(
     async (listId, { rejectWithValue }) => {
         try {
             const response = await fetch(`${API_URL}/${listId}`, {
-                method: 'DELETE',
+                method: 'DELETE', // DELETE isteği ile siliyoruz
                 credentials: 'include',
             });
             const data = await response.json();
@@ -148,6 +147,28 @@ export const addMovieToList = createAsyncThunk(
     }
 );
 
+// YENİ THUNK: reportList
+export const reportList = createAsyncThunk(
+    'lists/reportList',
+    async (listId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${listId}/report`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                toast.error(data.message || 'Liste raporlanırken bir hata oluştu!');
+                return rejectWithValue(data.message);
+            }
+            toast.success(data.message);
+            return listId; // Başarılı olursa raporlanan listenin ID'sini döndür
+        } catch (error) {
+            toast.error(error.message || 'Ağ hatası oluştu!');
+            return rejectWithValue(error.message);
+        }
+    }
+);
 
 
 const listSlice = createSlice({
@@ -274,6 +295,22 @@ const listSlice = createSlice({
                 state.status = 'failed';
                 state.error = action.payload || 'Film listeye eklenemedi.';
                 toast.error(action.payload || 'Film listeye eklenemedi.');
+            })
+            // reportList için extraReducer
+            .addCase(reportList.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(reportList.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                // Raporlanan listeyi listeden çıkarmak yerine, sadece durumunu güncelleyebiliriz
+                // Veya moderasyon paneline taşındığı için ana listeden kaldırabiliriz.
+                // Şimdilik sadece toast mesajı ile başarılı olduğunu belirtiyoruz.
+                state.error = null;
+            })
+            .addCase(reportList.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
             });
     }
 });
