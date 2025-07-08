@@ -6,7 +6,8 @@ const {
     fetchMovieFromTMDB,
     updateMovie,
     deleteMovie,
-    likeMovie // likeMovie controller fonksiyonu eklendi
+    likeMovie,
+    getSimilarMovies
 } = require('../controllers/movieController');
 const reviewRouter = require('./reviewRoute');
 const Movie = require('../models/Movie');
@@ -34,9 +35,12 @@ router.route('/:id')
     .put(protect, authorize('admin'), updateMovie)
     .delete(protect, authorize('admin'), deleteMovie);
 
-// Yeni beğeni endpoint'i eklendi
-router.route('/:id/like').put(protect, likeMovie); //
+
+router.route('/:id/like').put(protect, likeMovie); 
 
 router.use('/:movieId/reviews', reviewRouter);
+
+
+router.route('/:tmdbId/similar').get(getSimilarMovies);
 
 module.exports = router;

@@ -9,7 +9,7 @@ const asyncHandler = require('../utils/asyncHandler');
 exports.getPerson = asyncHandler(async (req, res, next) => {
   const person = await Person.findById(req.params.id)
     .populate({
-      path: 'filmography',
+      path: 'filmography', 
       populate: {
         path: 'movie',
         select: 'title fullPosterUrl releaseDate voteAverage'
@@ -22,8 +22,30 @@ exports.getPerson = asyncHandler(async (req, res, next) => {
     );
   }
 
+
+  const filmographyByDepartment = {};
+  
+  const castAndCrew = await Promise.all([
+      Cast.find({ person: person._id }).populate('movie', 'title fullPosterUrl releaseDate voteAverage'),
+      Crew.find({ person: person._id }).populate('movie', 'title fullPosterUrl releaseDate voteAverage')
+  ]);
+  
+  const allCredits = [...castAndCrew[0], ...castAndCrew[1]];
+
+  allCredits.forEach(credit => {
+      const department = credit.department || 'Acting'; 
+      if (!filmographyByDepartment[department]) {
+          filmographyByDepartment[department] = [];
+      }
+      filmographyByDepartment[department].push(credit);
+  });
+
+
   res.status(200).json({
     success: true,
-    data: person
+    data: {
+        ...person.toObject(),
+        filmographyByDepartment
+    }
   });
 });

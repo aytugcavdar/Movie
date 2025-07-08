@@ -325,3 +325,51 @@ exports.likeMovie = asyncHandler(async (req, res, next) => {
         message
     });
 });
+
+// @desc    Bir filme benzer filmleri getir (TMDB API'ından)
+// @route   GET /api/v1/movies/:tmdbId/similar
+// @access  Public
+exports.getSimilarMovies = asyncHandler(async (req, res, next) => {
+    const { tmdbId } = req.params;
+
+    if (!tmdbId) {
+        return next(new ErrorResponse('TMDB ID gerekli', 400));
+    }
+    
+    try {
+        const response = await axios.get(`${TMDB_BASE_URL}/movie/${tmdbId}/similar`, {
+            params: {
+                api_key: TMDB_API_KEY,
+                language: 'tr-TR',
+                page: 1
+            }
+        });
+
+        // TMDB'den gelen filmlerin bizim veritabanımızda olup olmadığını kontrol edelim
+        const tmdbMovies = response.data.results;
+        const tmdbIds = tmdbMovies.map(m => m.id);
+
+        const existingMovies = await Movie.find({ tmdbId: { $in: tmdbIds } });
+        const existingTmdbIds = new Set(existingMovies.map(m => m.tmdbId));
+
+        // Veritabanımızdaki filmlerle TMDB'den gelenleri birleştirerek, _id bilgisi ekleyelim
+        const similarMovies = tmdbMovies.map(tmdbMovie => {
+            const existingMovie = existingMovies.find(m => m.tmdbId === tmdbMovie.id);
+            return existingMovie ? existingMovie : tmdbMovie; // Eğer film bizde varsa bizim _id'li objemizi, yoksa TMDB objesini kullan
+        });
+
+
+        res.status(200).json({
+            success: true,
+            count: similarMovies.length,
+            data: similarMovies
+        });
+    } catch (error) {
+        console.error("Benzer filmler getirilirken hata:", error.message);
+        // TMDB'den 404 hatası gelirse (film bulunamazsa) boş bir dizi döndür
+        if (error.response && error.response.status === 404) {
+            return res.status(200).json({ success: true, count: 0, data: [] });
+        }
+        return next(new ErrorResponse('Benzer filmler getirilemedi', 500));
+    }
+});

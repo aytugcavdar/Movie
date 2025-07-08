@@ -131,7 +131,7 @@ exports.getFollowingFeed = asyncHandler(async (req, res, next) => {
     .populate('user', 'username avatar')
     .populate('movie', 'title posterPath releaseDate')
     .sort('-createdAt')
-    .limit(10) // Son 10 incelemeyi al
+    .limit(10)
     .lean();
 
     

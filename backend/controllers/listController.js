@@ -109,7 +109,7 @@ exports.likeList = asyncHandler(async (req, res, next) => {
         return next(new ErrorResponse(`ID'si ${req.params.id} olan liste bulunamadı`, 404));
     }
 
-    // Modelde tanımladığımız toggleLike metodunu kullanıyoruz
+    
     const isLiked = await list.toggleLike(req.user.id);
     
     const message = isLiked ? 'Liste beğenildi.' : 'Liste beğenmekten vazgeçildi.';
@@ -196,5 +196,37 @@ exports.reportList = asyncHandler(async (req, res, next) => {
     res.status(200).json({
         success: true,
         message: 'Liste başarıyla raporlandı ve moderasyon için gönderildi.'
+    });
+});
+// @desc    Bir listeye yorum ekle
+// @route   POST /api/v1/lists/:id/comments
+// @access  Private
+exports.addCommentToList = asyncHandler(async (req, res, next) => {
+    const list = await List.findById(req.params.id);
+
+    if (!list) {
+        return next(new ErrorResponse('Liste bulunamadı', 404));
+    }
+
+    const { content } = req.body;
+    if (!content) {
+        return next(new ErrorResponse('Yorum içeriği boş olamaz', 400));
+    }
+
+    const comment = {
+        user: req.user.id,
+        content: content,
+        createdAt: new Date()
+    };
+
+    list.comments.push(comment);
+    list.commentsCount = list.comments.length;
+    await list.save();
+    
+    
+
+    res.status(201).json({
+        success: true,
+        data: list
     });
 });

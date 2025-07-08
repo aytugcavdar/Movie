@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMovies } from '../redux/movieSlice';
@@ -16,32 +15,39 @@ const MoviesPage = () => {
     const dispatch = useDispatch();
     const { movies, status, pagination, total } = useSelector(state => state.movie);
 
+    
     const [filters, setFilters] = useState({
         search: '',
         genres: [],
-        releaseYear: '',
+        yearRange: '', 
+        rating: '',    
         sort: '-popularity'
     });
     const [page, setPage] = useState(1);
 
+    
     const debouncedFetch = useCallback(debounce((params, pageNum) => {
         dispatch(fetchMovies({ ...params, page: pageNum }));
     }, 400), [dispatch]);
 
     useEffect(() => {
         const activeFilters = { ...filters };
+        
+        
         if (activeFilters.genres.length > 0) {
             activeFilters.genres = activeFilters.genres.join(',');
         } else {
             delete activeFilters.genres;
         }
-
+        
+       
         Object.keys(activeFilters).forEach(key => {
             if (!activeFilters[key]) delete activeFilters[key];
         });
 
         debouncedFetch(activeFilters, page);
 
+       
         return () => debouncedFetch.cancel();
     }, [filters, page, debouncedFetch]);
 
@@ -66,16 +72,21 @@ const MoviesPage = () => {
             <div className="max-w-screen-xl mx-auto">
                 <h1 className="text-4xl font-bold mb-8 text-center">Filmleri Keşfet</h1>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 p-6 bg-base-100 rounded-lg shadow-lg">
+                {/* Gelişmiş Filtreleme Alanı */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 p-6 bg-base-100 rounded-lg shadow-xl border border-base-300">
+                    
+                    {/* Arama */}
                     <div className="form-control md:col-span-2">
-                        <label className="label"><span className="label-text">Film Ara</span></label>
+                        <label className="label"><span className="label-text font-semibold">Film Ara</span></label>
                         <div className="relative">
-                            <input type="text" name="search" placeholder="Örn: The Matrix" value={filters.search} onChange={handleFilterChange} className="input input-bordered w-full" />
-                            <FiSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40"/>
+                            <input type="text" name="search" placeholder="Örn: The Matrix, Inception..." value={filters.search} onChange={handleFilterChange} className="input input-bordered w-full pl-10" />
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40"/>
                         </div>
                     </div>
+                    
+                    {/* Sıralama */}
                     <div className="form-control">
-                         <label className="label"><span className="label-text">Sırala</span></label>
+                         <label className="label"><span className="label-text font-semibold">Sırala</span></label>
                          <select name="sort" value={filters.sort} onChange={handleFilterChange} className="select select-bordered">
                             <option value="-popularity">Popülerliğe Göre (Azalan)</option>
                             <option value="popularity">Popülerliğe Göre (Artan)</option>
@@ -85,40 +96,58 @@ const MoviesPage = () => {
                             <option value="voteAverage">Puana Göre (Düşük)</option>
                          </select>
                     </div>
+
+                    {/* Puan Aralığı */}
                      <div className="form-control">
-                        <label className="label"><span className="label-text">Yayın Yılı</span></label>
-                        <input type="number" name="releaseYear" placeholder="Örn: 1999" value={filters.releaseYear} onChange={handleFilterChange} className="input input-bordered w-full" />
+                        <label className="label"><span className="label-text font-semibold">Puan Aralığı</span></label>
+                        <input type="text" name="rating" placeholder="Örn: 7.5-9" value={filters.rating} onChange={handleFilterChange} className="input input-bordered w-full" />
                     </div>
-                    <div className="md:col-span-4">
-                        <label className="label"><span className="label-text">Türler</span></label>
-                        <div className="flex flex-wrap gap-2">
+
+                    {/* Yıl Aralığı */}
+                     <div className="form-control lg:col-start-4">
+                        <label className="label"><span className="label-text font-semibold">Yıl Aralığı</span></label>
+                        <input type="text" name="yearRange" placeholder="Örn: 1990-2000" value={filters.yearRange} onChange={handleFilterChange} className="input input-bordered w-full" />
+                    </div>
+
+                    {/* Türler */}
+                    <div className="lg:col-span-4 md:col-span-2">
+                        <label className="label"><span className="label-text font-semibold">Türler</span></label>
+                        <div className="flex flex-wrap gap-2 p-2 bg-base-200 rounded-md">
                             {GENRES.map(genre => (
-                                <button key={genre} onClick={() => handleGenreChange(genre)} className={`btn btn-sm ${filters.genres.includes(genre) ? 'btn-primary' : 'btn-outline'}`}>
-                                    {genre}
+                                <button key={genre} onClick={() => handleGenreChange(genre)} className={`btn btn-sm transition-all duration-200 ${filters.genres.includes(genre) ? 'btn-primary' : 'btn-ghost'}`}>
+                                    {filters.genres.includes(genre) && '✓'} {genre}
                                 </button>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                 {status === 'loading' && <div className="text-center p-10"><span className="loading loading-spinner loading-lg"></span></div>}
+                 {/* Sonuçlar */}
+                 {status === 'loading' && <div className="text-center p-10"><span className="loading loading-spinner loading-lg text-primary"></span></div>}
                  {status === 'succeeded' && (
                     <>
-                        <div className="mb-4 text-sm text-base-content/70">Toplam {total} sonuç bulundu.</div>
+                        <div className="mb-4 text-sm text-base-content/70">Toplam <span className="font-bold text-primary">{total}</span> sonuç bulundu.</div>
                         {movies.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                 {movies.map(movie => <MovieCard key={movie._id} movie={movie} />)}
                             </div>
                         ) : (
-                            <div className="text-center py-16">Aradığınız kriterlere uygun film bulunamadı.</div>
-                        )}
-                        <div className="flex justify-center mt-8">
-                            <div className="join">
-                                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!pagination?.prev} className="join-item btn">«</button>
-                                <button className="join-item btn">Sayfa {page}</button>
-                                <button onClick={() => setPage(p => p + 1)} disabled={!pagination?.next} className="join-item btn">»</button>
+                            <div className="text-center py-16 bg-base-100 rounded-lg shadow-inner">
+                                <p className="text-xl font-semibold">Sonuç Bulunamadı</p>
+                                <p className="text-base-content/70 mt-2">Aradığınız kriterlere uygun film bulunamadı. Lütfen filtrelerinizi değiştirmeyi deneyin.</p>
                             </div>
-                        </div>
+                        )}
+
+                        {/* Sayfalama */}
+                        {pagination && total > (pagination.limit || 20) && (
+                            <div className="flex justify-center mt-8">
+                                <div className="join">
+                                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!pagination?.prev} className="join-item btn">«</button>
+                                    <button className="join-item btn pointer-events-none">Sayfa {page}</button>
+                                    <button onClick={() => setPage(p => p + 1)} disabled={!pagination?.next} className="join-item btn">»</button>
+                                </div>
+                            </div>
+                        )}
                     </>
                  )}
             </div>

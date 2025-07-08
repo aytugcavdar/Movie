@@ -218,6 +218,22 @@ export const reportReview = createAsyncThunk(
         }
     }
 );
+export const fetchSimilarMovies = createAsyncThunk(
+    'movies/fetchSimilarMovies',
+    async (tmdbId, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_URL}/${tmdbId}/similar`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                return rejectWithValue(errorData.message || 'Benzer filmler yüklenemedi.');
+            }
+            const data = await response.json();
+            return data.data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
 
 
 const movieSlice = createSlice({
@@ -371,6 +387,16 @@ const movieSlice = createSlice({
             .addCase(reportReview.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
+            })
+            .addCase(fetchSimilarMovies.pending, (state) => {
+                state.similarMoviesStatus = 'loading';
+            })
+            .addCase(fetchSimilarMovies.fulfilled, (state, action) => {
+                state.similarMoviesStatus = 'succeeded';
+                state.similarMovies = action.payload;
+            })
+            .addCase(fetchSimilarMovies.rejected, (state) => {
+                state.similarMoviesStatus = 'failed';
             });
     },
 });

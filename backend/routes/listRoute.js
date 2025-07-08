@@ -8,7 +8,8 @@ const {
     deleteList,
     updateList,
     likeList,
-    reportList // reportList fonksiyonunu import ettik
+    reportList,
+    addCommentToList
 } = require('../controllers/listController');
 
 const { protect } = require('../middlewares/authMiddeleware');
@@ -37,5 +38,7 @@ router.route('/:id/like')
     .put(protect, likeList);
 
 router.route('/:id/report').post(protect, reportList);
+
+router.route('/:id/comments').post(protect, addCommentToList);
 
 module.exports = router;
