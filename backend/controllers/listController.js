@@ -1,6 +1,8 @@
 const List = require('../models/List');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // @desc    Kullanıcının tüm özel listelerini getir
 // @route   GET /api/v1/lists
@@ -202,7 +204,7 @@ exports.reportList = asyncHandler(async (req, res, next) => {
 // @route   POST /api/v1/lists/:id/comments
 // @access  Private
 exports.addCommentToList = asyncHandler(async (req, res, next) => {
-    const list = await List.findById(req.params.id);
+    const list = await List.findById(req.params.id).populate('user'); // user populate edildi
 
     if (!list) {
         return next(new ErrorResponse('Liste bulunamadı', 404));
@@ -222,11 +224,50 @@ exports.addCommentToList = asyncHandler(async (req, res, next) => {
     list.comments.push(comment);
     list.commentsCount = list.comments.length;
     await list.save();
-    
-    
+
+    // Yorumu yapan kişi, liste sahibi değilse bildirim gönder
+    if (list.user._id.toString() !== req.user.id.toString()) {
+        const notification = await Notification.create({
+            user: list.user._id,
+            sender: req.user.id,
+            type: 'comment_on_list',
+            message: `${req.user.username}, "${list.title}" adlı listenize yorum yaptı.`,
+            link: `/lists/${list._id}`
+        });
+        const io = req.app.get('socketio');
+        io.to(list.user._id.toString()).emit('newNotification', notification);
+    }
+
+    // Mention (@) ile etiketlenen kullanıcılara bildirim gönder
+    const mentions = content.match(/@(\w+)/g);
+    if (mentions) {
+        const mentionedUsernames = mentions.map(mention => mention.substring(1));
+        const mentionedUsers = await User.find({ username: { $in: mentionedUsernames } });
+
+        for (const mentionedUser of mentionedUsers) {
+            // Kullanıcı kendine mention atarsa veya liste sahibine zaten bildirim gittiyse tekrar gönderme
+            if (mentionedUser._id.toString() !== req.user.id.toString() && mentionedUser._id.toString() !== list.user._id.toString()) {
+                const mentionNotification = await Notification.create({
+                    user: mentionedUser._id,
+                    sender: req.user.id,
+                    type: 'mention_in_list_comment',
+                    message: `${req.user.username}, "${list.title}" listesindeki bir yorumda sizden bahsetti.`,
+                    link: `/lists/${list._id}`
+                });
+                const io = req.app.get('socketio');
+                io.to(mentionedUser._id.toString()).emit('newNotification', mentionNotification);
+            }
+        }
+    }
+
+    // Yorumu ve yorum yapan kullanıcıyı populate ederek geri döndür
+    const populatedList = await list.populate({
+        path: 'comments.user',
+        select: 'username avatar'
+    });
 
     res.status(201).json({
         success: true,
-        data: list
+        data: populatedList
     });
 });

@@ -169,6 +169,24 @@ export const reportList = createAsyncThunk(
         }
     }
 );
+export const addCommentToList = createAsyncThunk('lists/addCommentToList', async ({ listId, content }, { rejectWithValue }) => {
+    try {
+        const response = await fetch(`${API_URL}/${listId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+            credentials: 'include',
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            return rejectWithValue(data.message || 'Yorum eklenemedi.');
+        }
+        return data.data; // Güncellenmiş listeyi döndür
+    } catch (error) {
+        return rejectWithValue(error.message || 'Ağ hatası.');
+    }
+});
+
 
 
 const listSlice = createSlice({
@@ -311,6 +329,17 @@ const listSlice = createSlice({
             .addCase(reportList.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
+            })
+            .addCase(addCommentToList.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                if (state.selectedList && state.selectedList._id === action.payload._id) {
+                    state.selectedList = action.payload; // Yorumlar dahil güncellenmiş listeyi state'e ata
+                }
+            })
+            .addCase(addCommentToList.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
+                toast.error(action.payload || "Yorum eklenemedi.");
             });
     }
 });

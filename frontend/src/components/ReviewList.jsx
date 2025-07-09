@@ -1,4 +1,8 @@
+
+
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { renderMentions } from '../utils/renderMentions'; 
 
 const ReviewList = ({ reviews }) => {
     if (!reviews?.length) {
@@ -21,11 +25,13 @@ const ReviewList = ({ reviews }) => {
                         <div className="flex items-center gap-3 mb-3">
                             <div className="avatar">
                                 <div className="w-10 rounded-full">
-                                    <img src={review.user.avatar?.url || `https://ui-avatars.com/api/?name=${review.user.username}`} />
+                                    <Link to={`/users/${review.user.username}`}>
+                                        <img src={review.user.avatar?.url || `https://ui-avatars.com/api/?name=${review.user.username}`} />
+                                    </Link>
                                 </div>
                             </div>
                             <div>
-                                <div className="font-semibold">{review.user.username}</div>
+                                <Link to={`/users/${review.user.username}`} className="font-semibold link link-hover">{review.user.username}</Link>
                                 <div className="rating rating-sm">
                                     {[1, 2, 3, 4, 5].map(star => (
                                         <span 
@@ -39,7 +45,7 @@ const ReviewList = ({ reviews }) => {
 
                         {/* Yorum İçeriği */}
                         <h4 className="font-semibold text-lg">{review.title}</h4>
-                        <p className="opacity-80">{review.content}</p>
+                        <p className="opacity-80">{renderMentions(review.content)}</p>
                         
                         {/* Tarih */}
                         <div className="text-xs opacity-50 text-right mt-2">

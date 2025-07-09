@@ -4,6 +4,8 @@ const Review = require('../models/Review');
 const Movie = require('../models/Movie');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../utils/asyncHandler');
+const Notification = require('../models/Notification');
+
 
 // @desc    Bir filme ait tüm incelemeleri getir
 // @route   GET /api/v1/movies/:movieId/reviews
@@ -186,5 +188,66 @@ exports.reportReview = asyncHandler(async (req, res, next) => {
     res.status(200).json({
         success: true,
         message: 'Yorum başarıyla raporlandı ve moderasyon için gönderildi.'
+    });
+});
+// @desc    Bir incelemeye yorum ekle
+// @route   POST /api/v1/reviews/:id/comments
+// @access  Private
+exports.addCommentToReview = asyncHandler(async (req, res, next) => {
+    const review = await Review.findById(req.params.id).populate('user', 'username avatar');
+
+    if (!review) {
+        return next(new ErrorResponse(`ID'si ${req.params.id} olan inceleme bulunamadı`, 404));
+    }
+
+    const { content } = req.body;
+    if (!content) {
+        return next(new ErrorResponse(`Yorum içeriği boş olamaz`, 400));
+    }
+
+    const newComment = await review.addComment(req.user.id, content);
+
+    // Yorumu yapan kişi, inceleme sahibi değilse bildirim gönder
+    if (review.user._id.toString() !== req.user.id.toString()) {
+        const notification = await Notification.create({
+            user: review.user._id,
+            sender: req.user.id,
+            type: 'comment_on_review',
+            message: `${req.user.username} yorumunuza yanıt verdi: "${content.substring(0, 50)}..."`,
+            link: `/movies/${review.movie._id}`
+        });
+
+        // Socket.IO ile bildirim gönder
+        const io = req.app.get('socketio');
+        io.to(review.user._id.toString()).emit('newNotification', notification);
+    }
+
+    // Mention (@) ile etiketlenen kullanıcılara bildirim gönder
+    const mentions = content.match(/@(\w+)/g);
+    if (mentions) {
+        const mentionedUsernames = mentions.map(mention => mention.substring(1));
+        const mentionedUsers = await User.find({ username: { $in: mentionedUsernames } });
+
+        for (const mentionedUser of mentionedUsers) {
+            // Kullanıcı kendine mention atarsa bildirim gönderme
+            if (mentionedUser._id.toString() !== req.user.id.toString()) {
+                const mentionNotification = await Notification.create({
+                    user: mentionedUser._id,
+                    sender: req.user.id,
+                    type: 'mention_in_comment',
+                    message: `${req.user.username} bir yorumda sizden bahsetti.`,
+                    link: `/movies/${review.movie._id}` // Linki yorumun yapıldığı film sayfasına yönlendir
+                });
+
+                const io = req.app.get('socketio');
+                io.to(mentionedUser._id.toString()).emit('newNotification', mentionNotification);
+            }
+        }
+    }
+
+
+    res.status(201).json({
+        success: true,
+        data: newComment
     });
 });

@@ -1,7 +1,10 @@
+// frontend/src/components/ReviewForm.jsx
+
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addReview } from '../redux/movieSlice';
 import { toast } from 'react-toastify';
+import MentionTextarea from './MentionTextarea'; // MentionTextarea component'ini import ediyoruz
 
 const ReviewForm = ({ movieId }) => {
     const dispatch = useDispatch();
@@ -24,14 +27,12 @@ const ReviewForm = ({ movieId }) => {
         }
 
         dispatch(addReview({ movieId, reviewData: { rating, title, content } }))
-             
             .unwrap()
             .then(() => {
                 toast.success('Yorum eklendi!');
                 setRating(0);
                 setTitle('');
                 setContent('');
-                
             })
             .catch(err => toast.error(err));
     };
@@ -72,16 +73,15 @@ const ReviewForm = ({ movieId }) => {
                 {/* İçerik */}
                 <div className="form-control">
                     <label className="label">Yorum</label>
-                    <textarea
+                    <MentionTextarea
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="textarea textarea-bordered h-24"
-                        placeholder="Yorumunuzu yazın..."
+                        onChange={setContent}
+                        placeholder="Yorumunuzu yazın... Başka bir kullanıcıdan bahsetmek için @kullaniciadi yazın."
                     />
                 </div>
 
-                <button 
-                    type="submit" 
+                <button
+                    type="submit"
                     className="btn btn-primary"
                     disabled={status === 'loading'}
                 >

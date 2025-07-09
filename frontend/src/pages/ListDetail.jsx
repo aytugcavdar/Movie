@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchListById, removeMovieFromList, likeList, updateList, deleteList, reportList } from '../redux/listSlice'; // reportList eklendi
+import { fetchListById, removeMovieFromList, likeList, updateList, deleteList, reportList, addCommentToList } from '../redux/listSlice';
 import MovieCard from '../components/MovieCard';
-import { FiArrowLeft, FiTrash2, FiHeart, FiEdit, FiEye, FiLock, FiAlertTriangle, FiFlag } from 'react-icons/fi'; // FiFlag eklendi
+import { FiArrowLeft, FiTrash2, FiHeart, FiEdit, FiEye, FiLock, FiAlertTriangle, FiFlag, FiMessageSquare } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import MentionTextarea from '../components/MentionTextarea';
+import { renderMentions } from '../utils/renderMentions';
 
 const ListDetail = () => {
     const { id } = useParams();
@@ -14,52 +16,17 @@ const ListDetail = () => {
     const { selectedList, status, error } = useSelector(state => state.list);
     const { user: currentUser, isAuthenticated } = useSelector(state => state.auth);
 
-    // Düzenleme için yeni state'ler
     const [editingList, setEditingList] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
     const [editIsPublic, setEditIsPublic] = useState(true);
-
-    // Silme için yeni state
     const [listToDelete, setListToDelete] = useState(null);
-
-    const handleLikeList = () => {
-        if (!isAuthenticated) {
-            toast.error("Beğenmek için giriş yapmalısınız.");
-            return;
-        }
-        dispatch(likeList(id));
-    };
-
-    // Raporlama fonksiyonu
-    const handleReportList = () => {
-        if (!isAuthenticated) {
-            toast.error("Listeyi raporlamak için giriş yapmalısınız.");
-            return;
-        }
-        // Kendi listesini raporlamasını engelle
-        if (currentUser && selectedList.user === currentUser.id) {
-            toast.warn("Kendi listenizi raporlayamazsınız.");
-            return;
-        }
-        if (window.confirm("Bu listeyi raporlamak istediğinizden emin misiniz?")) {
-            dispatch(reportList(id))
-                .unwrap()
-                .then(() => {
-                    // Başarılı toast mesajı thunk içinde zaten gösteriliyor.
-                })
-                .catch(err => {
-                    // Hata toast mesajı thunk içinde zaten gösteriliyor.
-                });
-        }
-    };
-
+    const [commentContent, setCommentContent] = useState('');
 
     useEffect(() => {
         dispatch(fetchListById(id));
     }, [dispatch, id]);
 
-    // Liste verileri yüklendiğinde düzenleme formunu doldur
     useEffect(() => {
         if (selectedList) {
             setEditingList(selectedList);
@@ -69,18 +36,38 @@ const ListDetail = () => {
         }
     }, [selectedList]);
 
+    const handleLikeList = () => {
+        if (!isAuthenticated) {
+            toast.error("Beğenmek için giriş yapmalısınız.");
+            return;
+        }
+        dispatch(likeList(id));
+    };
+
+    const handleReportList = () => {
+        if (!isAuthenticated) {
+            toast.error("Listeyi raporlamak için giriş yapmalısınız.");
+            return;
+        }
+        if (currentUser && selectedList.user === currentUser.id) {
+            toast.warn("Kendi listenizi raporlayamazsınız.");
+            return;
+        }
+        if (window.confirm("Bu listeyi raporlamak istediğinizden emin misiniz?")) {
+            dispatch(reportList(id));
+        }
+    };
+
     const handleRemoveMovie = (movieId) => {
         if(window.confirm("Bu filmi listeden kaldırmak istediğinize emin misiniz?")) {
             dispatch(removeMovieFromList({ listId: id, movieId }));
         }
     };
 
-    // Düzenleme modalını açma fonksiyonu
     const handleEditClick = () => {
         document.getElementById('edit_list_modal').showModal();
     };
 
-    // Düzenleme formunu gönderme fonksiyonu
     const handleUpdateList = (e) => {
         e.preventDefault();
         if (!editTitle.trim()) {
@@ -88,42 +75,44 @@ const ListDetail = () => {
             return;
         }
         if (editingList) {
-            dispatch(updateList({
-                listId: editingList._id,
-                listData: {
-                    title: editTitle,
-                    description: editDescription,
-                    isPublic: editIsPublic
-                }
-            }))
-            .unwrap()
-            .then(() => {
-                document.getElementById('edit_list_modal').close();
-                // selectedList otomatik olarak güncellenecek, ayrı bir setleme gerekmez
-            })
-            .catch(err => toast.error(err));
+            dispatch(updateList({ listId: editingList._id, listData: { title: editTitle, description: editDescription, isPublic: editIsPublic }}))
+                .unwrap()
+                .then(() => document.getElementById('edit_list_modal').close())
+                .catch(err => toast.error(err));
         }
     };
 
-    // Silme onay modalını açma fonksiyonu
     const handleDeleteClick = () => {
         setListToDelete(selectedList);
         document.getElementById('delete_modal').showModal();
     };
 
-    // Silme işlemini onaylama fonksiyonu
     const confirmDelete = () => {
         if (listToDelete) {
             dispatch(deleteList(listToDelete._id))
                 .unwrap()
                 .then(() => {
                     toast.success(`"${listToDelete.title}" listesi başarıyla silindi.`);
-                    navigate('/lists'); // Liste silindikten sonra listeler sayfasına yönlendir
+                    navigate('/lists');
                 })
-                .catch((err) => {
-                    toast.error(`Liste silinemedi: ${err}`);
-                });
+                .catch((err) => toast.error(`Liste silinemedi: ${err}`));
         }
+    };
+    
+    const handleAddComment = (e) => {
+        e.preventDefault();
+        if (!commentContent.trim()) {
+            toast.error("Yorum içeriği boş olamaz.");
+            return;
+        }
+        dispatch(addCommentToList({ listId: id, content: commentContent }))
+            .unwrap()
+            .then(() => {
+                setCommentContent('');
+                toast.success("Yorumunuz eklendi.");
+                dispatch(fetchListById(id)); // Yorum sonrası listeyi yenile
+            })
+            .catch(err => toast.error(err));
     };
 
     if (status === 'loading') {
@@ -134,11 +123,8 @@ const ListDetail = () => {
         return <div className="alert alert-error">Hata: {error || "Liste bulunamadı."}</div>;
     }
 
-    // Liste sahibinin bu listeyi düzenleyip düzenleyemeyeceğini kontrol et
-    const canEdit = currentUser && currentUser.id === selectedList.user;
-    // Kendi listesini raporlayamaz
-    const canReport = isAuthenticated && currentUser && selectedList.user !== currentUser.id;
-
+    const canEdit = currentUser && selectedList.user?._id === currentUser.id;
+    const canReport = isAuthenticated && currentUser && selectedList.user?._id !== currentUser.id;
 
     return (
         <div className="min-h-screen bg-base-200 p-8">
@@ -162,107 +148,67 @@ const ListDetail = () => {
                                 <FiHeart className="text-red-500" />
                                 {selectedList.likesCount || 0}
                             </button>
-                            {canEdit && (
-                                <button
-                                    className="btn btn-ghost btn-sm btn-circle"
-                                    onClick={handleEditClick}
-                                    title="Listeyi Düzenle"
-                                >
-                                    <FiEdit size={18} />
-                                </button>
-                            )}
-                            {canEdit && (
-                                <button
-                                    className="btn btn-ghost btn-sm btn-circle text-error"
-                                    onClick={handleDeleteClick}
-                                    title="Listeyi Sil"
-                                >
-                                    <FiTrash2 size={18} />
-                                </button>
-                            )}
-                            {canReport && ( // Raporla butonu
-                                <button
-                                    className="btn btn-ghost btn-sm btn-circle text-warning"
-                                    onClick={handleReportList}
-                                    title="Listeyi Raporla"
-                                >
-                                    <FiFlag size={18} />
-                                </button>
-                            )}
+                            {canEdit && <button className="btn btn-ghost btn-sm btn-circle" onClick={handleEditClick} title="Listeyi Düzenle"><FiEdit size={18} /></button>}
+                            {canEdit && <button className="btn btn-ghost btn-sm btn-circle text-error" onClick={handleDeleteClick} title="Listeyi Sil"><FiTrash2 size={18} /></button>}
+                            {canReport && <button className="btn btn-ghost btn-sm btn-circle text-warning" onClick={handleReportList} title="Listeyi Raporla"><FiFlag size={18} /></button>}
                         </div>
                     </div>
                 </div>
 
                 {selectedList.movies.length === 0 ? (
-                    <div className="text-center py-16 bg-base-100 rounded-lg shadow-inner">
-                        <p className="text-xl">Bu listede henüz film yok.</p>
-                    </div>
+                    <div className="text-center py-16 bg-base-100 rounded-lg shadow-inner"><p className="text-xl">Bu listede henüz film yok.</p></div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                         {selectedList.movies.map(({ movie }) => (
                             <div key={movie._id} className="relative group">
                                 <MovieCard movie={movie} />
-                                {canEdit && ( // Sadece liste sahibi filmleri kaldırabilir
-                                     <button
-                                        onClick={() => handleRemoveMovie(movie._id)}
-                                        className="btn btn-sm btn-circle btn-error absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                     >
-                                        <FiTrash2 />
-                                     </button>
-                                )}
+                                {canEdit && <button onClick={() => handleRemoveMovie(movie._id)} className="btn btn-sm btn-circle btn-error absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"><FiTrash2 /></button>}
                             </div>
                         ))}
                     </div>
                 )}
-            </div>
-
-            {/* Genel Liste Düzenleme Modalı */}
-            <dialog id="edit_list_modal" className="modal modal-middle sm:modal-middle">
-                <div className="modal-box p-6">
-                    <form method="dialog"><button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
-                    <h3 className="font-bold text-2xl mb-4 text-center">Listeyi Düzenle</h3>
-                    <form onSubmit={handleUpdateList} className="space-y-4">
-                        <div className="form-control">
-                            <label className="label"><span className="label-text">Liste Başlığı</span></label>
-                            <input type="text" placeholder="Liste başlığı" className="input input-bordered w-full" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+                
+                {/* Yorumlar Bölümü */}
+                <div className="mt-12">
+                    <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+                        <FiMessageSquare /> Yorumlar ({selectedList.comments?.length || 0})
+                    </h2>
+                    {isAuthenticated && (
+                        <div className="card bg-base-100 shadow-xl mb-8">
+                            <div className="card-body">
+                                <form onSubmit={handleAddComment}>
+                                    <div className="form-control">
+                                        <MentionTextarea value={commentContent} onChange={setCommentContent} placeholder="Bu liste hakkında bir yorum yazın..." />
+                                    </div>
+                                    <div className="card-actions justify-end mt-4">
+                                        <button type="submit" className="btn btn-primary" disabled={status === 'loading'}>Yorum Yap</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                        <div className="form-control">
-                            <label className="label"><span className="label-text">Açıklama (İsteğe Bağlı)</span></label>
-                            <textarea placeholder="Liste açıklaması" className="textarea textarea-bordered w-full h-24" value={editDescription} onChange={(e) => setEditDescription(e.target.value)}></textarea>
-                        </div>
-                        <div className="form-control">
-                            <label className="label cursor-pointer">
-                                <span className="label-text">Herkese Açık Yap</span>
-                                <input
-                                    type="checkbox"
-                                    className="toggle toggle-primary"
-                                    checked={editIsPublic}
-                                    onChange={(e) => setEditIsPublic(e.target.checked)}
-                                />
-                            </label>
-                        </div>
-                        <button type="submit" className="btn btn-primary w-full" disabled={status === 'loading'}>
-                            {status === 'loading' ? <span className="loading loading-spinner"></span> : "Listeyi Güncelle"}
-                        </button>
-                    </form>
-                </div>
-            </dialog>
-
-            {/* Silme Onay Modalı */}
-            <dialog id="delete_modal" className="modal">
-                <div className="modal-box">
-                    <h3 className="font-bold text-lg flex items-center gap-2"><FiAlertTriangle className="text-error" /> Listeyi Sil</h3>
-                    <p className="py-4">
-                        "<strong>{listToDelete?.title}</strong>" listesini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-                    </p>
-                    <div className="modal-action">
-                        <form method="dialog">
-                            <button className="btn">İptal</button>
-                            <button className="btn btn-error ml-2" onClick={confirmDelete}>Evet, Sil</button>
-                        </form>
+                    )}
+                    <div className="space-y-4">
+                        {selectedList.comments && [...selectedList.comments].reverse().map(comment => (
+                            <div key={comment._id} className="chat chat-start">
+                                <div className="chat-image avatar">
+                                    <div className="w-10 rounded-full">
+                                        <img src={comment.user.avatar?.url || `https://ui-avatars.com/api/?name=${comment.user.username}`} alt="avatar"/>
+                                    </div>
+                                </div>
+                                <div className="chat-header">
+                                    <Link to={`/users/${comment.user.username}`} className="font-bold link-hover">{comment.user.username}</Link>
+                                </div>
+                                <div className="chat-bubble">{renderMentions(comment.content)}</div>
+                                <div className="chat-footer opacity-50 text-xs">{new Date(comment.createdAt).toLocaleString('tr-TR')}</div>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </dialog>
+            </div>
+
+            {/* Modals */}
+            <dialog id="edit_list_modal" className="modal"><div className="modal-box"><form method="dialog"><button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form><h3 className="font-bold text-lg">Listeyi Düzenle</h3><form onSubmit={handleUpdateList} className="space-y-4 mt-4"><input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="input input-bordered w-full" required /><textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="textarea textarea-bordered w-full h-24"></textarea><label className="label cursor-pointer"><span className="label-text">Herkese Açık</span><input type="checkbox" checked={editIsPublic} onChange={(e) => setEditIsPublic(e.target.checked)} className="toggle toggle-primary" /></label><button type="submit" className="btn btn-primary w-full">Güncelle</button></form></div></dialog>
+            <dialog id="delete_modal" className="modal"><div className="modal-box"><h3 className="font-bold text-lg text-error">Listeyi Sil</h3><p className="py-4">"{listToDelete?.title}" listesini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</p><div className="modal-action"><form method="dialog"><button className="btn">İptal</button><button className="btn btn-error ml-2" onClick={confirmDelete}>Evet, Sil</button></form></div></div></dialog>
         </div>
     );
 };

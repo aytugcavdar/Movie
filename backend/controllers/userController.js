@@ -246,3 +246,22 @@ exports.markMovieAsWatched = asyncHandler(async (req, res, next) => {
         message,
     });
 });
+// @desc    Kullanıcıları kullanıcı adına göre ara (mention için)
+// @route   GET /api/v1/users/search?q=...
+// @access  Private
+exports.searchUsers = asyncHandler(async (req, res, next) => {
+    const searchTerm = req.query.q;
+
+    if (!searchTerm) {
+        return res.status(200).json({ success: true, data: [] });
+    }
+
+    const users = await User.find({
+        username: { $regex: searchTerm, $options: 'i' }
+    }).select('username fullName avatar').limit(10);
+
+    res.status(200).json({
+        success: true,
+        data: users
+    });
+});
